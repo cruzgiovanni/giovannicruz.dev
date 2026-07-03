@@ -83,7 +83,7 @@ export function Problems() {
       <section
         ref={containerRef}
         className="relative hidden md:block bg-background"
-        style={{ paddingBottom: '5vh' }}
+        style={{ paddingBottom: '5dvh' }}
       >
         <div className="px-2 md:px-4 pt-20 md:pt-32">
           <div className="mb-12">
@@ -99,7 +99,7 @@ export function Problems() {
                 totalCards={cards.length}
                 scrollYProgress={scrollYProgress}
               />
-              {index < cards.length - 1 && <div className="h-[35vh]" />}
+              {index < cards.length - 1 && <div className="h-[35dvh]" />}
             </Fragment>
           ))}
         </div>
