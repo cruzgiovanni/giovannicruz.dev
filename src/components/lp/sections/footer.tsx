@@ -27,7 +27,7 @@ export function Footer() {
       </div>
 
       {/* Footer content - tall section like basement */}
-      <div className="min-h-[55vh] flex flex-col justify-end px-2 md:px-4 pb-20 md:pb-4 w-full">
+      <div className="min-h-[55dvh] flex flex-col justify-end px-2 md:px-4 pb-20 md:pb-4 w-full">
         {/* CTA - desktop only */}
         <div className="hidden md:block mb-8">
           <p className="text-xl text-foreground tracking-tight mb-4">{ctaText}</p>

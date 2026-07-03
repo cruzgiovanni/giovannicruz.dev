@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { heroContent } from '@/data/lp-info'
 import { LineShadowText } from '@/components/ui/line-shadow-text'
 
-const sceneHeight = 'flex-1 min-h-[45vh] md:flex-none md:h-[65vh]'
+const sceneHeight = 'flex-1 min-h-[45svh] md:flex-none md:h-[65vh]'
 
 // Preload Three.js chunk immediately (don't wait for hydration)
 const sceneModule = typeof window !== 'undefined' ? import('./computer-scene-canvas') : null
@@ -50,7 +50,7 @@ export function Hero() {
   }, [])
 
   return (
-    <section className="bg-background overflow-x-hidden tracking-tight flex flex-col h-[100dvh] md:block md:h-auto">
+    <section className="bg-background overflow-x-hidden tracking-tight flex flex-col h-[100svh] md:block md:h-auto">
       {/* 3D Scene with reveal overlay */}
       <div className={`relative w-full ${sceneHeight} bg-background cursor-grab active:cursor-grabbing border`}>
         <ComputerSceneCanvas onReadyAction={onSceneReady} />

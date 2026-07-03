@@ -1,4 +1,4 @@
-const message = 'Olá, tudo bem? Tenho um projeto e queria conversar com você.'
+const message = 'Olá, tudo bem? Tenho um projeto em mente e queria conversar com você.'
 const encodedMessage = encodeURIComponent(message)
 const link = `https://wa.me/5519996391410?text=${encodedMessage}`
 
@@ -52,25 +52,20 @@ export const servicesContent = {
       id: '01',
       title: 'Websites',
       description:
-        'Sites rápidos, responsivos e feitos do zero. Sem templates. Cada detalhe pensado para converter visitantes em clientes.',
+        'Sites autorais, feitos à mão como obra de arte, sem template genérico. Num mundo em que a IA deixou tudo genérico e igual, o seu nasce único: com identidade, alma e uma estética que é só sua. Arte que converte.',
     },
     {
       id: '02',
       title: 'Sistemas',
       description:
-        'Painéis, dashboards e ferramentas internas sob medida. Automação real para o dia a dia do seu negócio.',
+        'Software sob medida para o jeito que o seu negócio funciona de verdade. De uma automação pontual a uma plataforma que roda a operação inteira. Se dá pra imaginar, dá pra construir: ferramentas que acabam com o trabalho manual e crescem junto com você.',
     },
     {
       id: '03',
       title: 'E-commerce',
       description: 'Lojas virtuais com checkout otimizado, gestão de produtos e integração com meios de pagamento.',
     },
-    {
-      id: '04',
-      title: 'Identidade Visual',
-      description:
-        'Logo, paleta de cores e linguagem visual consistente. Sua marca com cara profissional desde o primeiro contato.',
-    },
+
   ],
 }
 

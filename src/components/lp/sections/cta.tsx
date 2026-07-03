@@ -4,7 +4,7 @@ const { title, buttonText } = ctaContent
 
 export function CTA() {
   return (
-    <section id="contact" className="relative bg-background py-12 md:py-20 mb-[10vh] md:mb-[15vh]">
+    <section id="contact" className="relative bg-background py-12 md:py-20 mb-[10dvh] md:mb-[15dvh]">
       <div className="relative px-2 md:px-4">
         <div>
           <h2 className="text-muted-foreground font-sans font-bold text-4xl md:text-6xl lg:text-7xl tracking-tight leading-[0.98]">
