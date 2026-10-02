@@ -826,9 +826,10 @@ function EmojiIcon({ emoji, label }: { emoji: string; label: string }) {
 
 interface DesktopSectionProps {
   isMobileFullscreen?: boolean
+  screenOnly?: boolean
 }
 
-export function DesktopSection({ isMobileFullscreen = false }: DesktopSectionProps) {
+export function DesktopSection({ isMobileFullscreen = false, screenOnly = false }: DesktopSectionProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [bootStage, setBootStage] = useState<'off' | 'happy' | 'loading' | 'desktop'>('off')
   const [currentTime, setCurrentTime] = useState('')
@@ -937,6 +938,9 @@ export function DesktopSection({ isMobileFullscreen = false }: DesktopSectionPro
         if (openWindows.length > 0) {
           const topWindow = openWindows.reduce((a, b) => (a.zIndex > b.zIndex ? a : b))
           closeWindow(topWindow.id)
+        } else if (window.self !== window.top) {
+          // Embedded in the home page's 3D scene: Esc on an empty desktop leaves the computer
+          window.parent.postMessage({ type: 'cruztosh:exit' }, window.location.origin)
         }
       }
     }
@@ -1395,6 +1399,228 @@ export function DesktopSection({ isMobileFullscreen = false }: DesktopSectionPro
     )
   }
 
+  // The screen itself: shutdown, boot and the desktop
+  const desktopScreen = (
+    <div
+      ref={desktopRef}
+      className="relative w-full h-full overflow-hidden"
+      style={{ background: '#4477aa' }}
+    >
+      {/* Shutdown Screen */}
+      {isShutdown && <MacShutdownScreen onPowerOn={handlePowerOn} />}
+
+      {/* Boot Stages */}
+      {!isShutdown && (bootStage === 'happy' || bootStage === 'loading') && (
+        <MacBootScreen stage={bootStage} />
+      )}
+
+      {/* Desktop */}
+      {!isShutdown && bootStage === 'desktop' && (
+        <div className="absolute inset-0 flex flex-col animate-in fade-in duration-300">
+          {/* Menu Bar */}
+          <MacMenuBar
+            currentTime={currentTime}
+            onAppleMenuClick={() => setAppleMenuOpen(!appleMenuOpen)}
+            appleMenuOpen={appleMenuOpen}
+            onOpenWindow={openWindow}
+            onShutdown={handleShutdown}
+          />
+
+          {/* Desktop Area */}
+          <div
+            className="flex-1 relative overflow-hidden"
+            onClick={() => {
+              setSelectedIcon(null)
+              setAppleMenuOpen(false)
+            }}
+          >
+            {/* Wallpaper Background  */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                background: 'linear-gradient(180deg, #4a7ab5 0%, #3d6ca8 30%, #2d5a96 60%, #1e4a85 100%)',
+              }}
+            >
+              {/* Large sweeping curve from bottom-left */}
+              <div
+                className="absolute"
+                style={{
+                  width: '200%',
+                  height: '120%',
+                  left: '-80%',
+                  bottom: '-60%',
+                  background:
+                    'radial-gradient(ellipse at center, rgba(120, 180, 220, 0.4) 0%, transparent 70%)',
+                  borderRadius: '50%',
+                }}
+              />
+              {/* Upper curve sweeping right */}
+              <div
+                className="absolute"
+                style={{
+                  width: '180%',
+                  height: '100%',
+                  left: '-40%',
+                  top: '-50%',
+                  background:
+                    'radial-gradient(ellipse at center, rgba(100, 160, 210, 0.3) 0%, transparent 60%)',
+                  borderRadius: '50%',
+                }}
+              />
+              {/* Middle accent curve */}
+              <div
+                className="absolute"
+                style={{
+                  width: '150%',
+                  height: '80%',
+                  left: '-20%',
+                  top: '10%',
+                  background:
+                    'radial-gradient(ellipse at 30% 50%, rgba(140, 190, 230, 0.25) 0%, transparent 50%)',
+                  borderRadius: '50%',
+                  transform: 'rotate(-15deg)',
+                }}
+              />
+              {/* Subtle highlight curve top-left */}
+              <div
+                className="absolute"
+                style={{
+                  width: '120%',
+                  height: '60%',
+                  left: '-30%',
+                  top: '-20%',
+                  background:
+                    'radial-gradient(ellipse at 40% 60%, rgba(160, 200, 240, 0.2) 0%, transparent 50%)',
+                  borderRadius: '50%',
+                  transform: 'rotate(-25deg)',
+                }}
+              />
+              {/* Bottom-right glow */}
+              <div
+                className="absolute"
+                style={{
+                  width: '100%',
+                  height: '80%',
+                  right: '-30%',
+                  bottom: '-20%',
+                  background:
+                    'radial-gradient(ellipse at center, rgba(90, 150, 200, 0.3) 0%, transparent 60%)',
+                  borderRadius: '50%',
+                }}
+              />
+              {/* Crossing arc from bottom */}
+              <div
+                className="absolute"
+                style={{
+                  width: '250%',
+                  height: '100%',
+                  left: '-75%',
+                  bottom: '-70%',
+                  background:
+                    'radial-gradient(ellipse at 50% 30%, rgba(130, 185, 225, 0.35) 0%, transparent 45%)',
+                  borderRadius: '50%',
+                }}
+              />
+            </div>
+
+            {/* Desktop Icons - top right */}
+            <div className="absolute top-[8px] right-[8px] md:top-[12px] md:right-[12px] flex flex-col gap-2 md:gap-4">
+              {desktopIcons.map((icon, i) => (
+                <div
+                  key={icon.id}
+                  className="animate-in fade-in slide-in-from-right-2 duration-300"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <MacDesktopIcon
+                    icon={icon.icon}
+                    label={icon.label}
+                    selected={selectedIcon === icon.id}
+                    onSelect={() => setSelectedIcon(icon.id)}
+                    onDoubleClick={() => openWindow(icon.id)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Trash Icon - bottom right */}
+            <div className="absolute bottom-[8px] right-[8px] md:bottom-[12px] md:right-[12px] animate-in fade-in slide-in-from-right-2 duration-300 delay-200">
+              <MacDesktopIcon
+                icon={<MacIcon src={trashIcon} alt="Trash" />}
+                label="Trash"
+                selected={selectedIcon === 'trash'}
+                onSelect={() => setSelectedIcon('trash')}
+                onDoubleClick={() => openWindow('trash')}
+              />
+            </div>
+
+            {/* Hint */}
+            {windows.filter((w) => w.isOpen).length === 0 && (
+              <div className="absolute bottom-[8px] left-[8px] md:bottom-[12px] md:left-[12px] animate-in fade-in duration-1000 delay-500">
+                <p
+                  className="text-[10px] md:text-[11px] text-white/80"
+                  style={{
+                    fontFamily: 'Chicago, Charcoal, Geneva, sans-serif',
+                    textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  Double-click icon to open
+                </p>
+              </div>
+            )}
+
+            {/* Windows */}
+            {(() => {
+              const openWindows = windows.filter((w) => w.isOpen)
+              const maxZIndex = Math.max(...openWindows.map((w) => w.zIndex), 0)
+              return windows
+                .filter((w) => w.isOpen && w.id !== 'calculator')
+                .map((win) => (
+                  <MacWindow
+                    key={win.id}
+                    window={win}
+                    onClose={() => closeWindow(win.id)}
+                    onMaximize={() => maximizeWindow(win.id)}
+                    onFocus={() => focusWindow(win.id)}
+                    onDrag={(x, y) => dragWindow(win.id, x, y)}
+                    onResize={(w, h) => resizeWindow(win.id, w, h)}
+                    isMobile={isMobile}
+                    containerRef={desktopRef}
+                    isActive={win.zIndex === maxZIndex}
+                  />
+                ))
+            })()}
+
+            {/* Calculator - custom window */}
+            {(() => {
+              const calcWindow = windows.find((w) => w.id === 'calculator')
+              if (!calcWindow) return null
+              return (
+                <CalculatorWindow
+                  isOpen={calcWindow.isOpen}
+                  position={calcWindow.position}
+                  zIndex={calcWindow.zIndex}
+                  onClose={() => closeWindow('calculator')}
+                  onFocus={() => focusWindow('calculator')}
+                  onDrag={(x, y) => dragWindow('calculator', x, y)}
+                  containerRef={desktopRef}
+                />
+              )
+            })()}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // Only the screen, for when the 3D scene provides the Macintosh around it
+  if (screenOnly) {
+    return (
+      <section ref={ref} className="relative h-full w-full">
+        {desktopScreen}
+      </section>
+    )
+  }
+
   // Desktop
   return (
     <section
@@ -1437,215 +1663,7 @@ export function DesktopSection({ isMobileFullscreen = false }: DesktopSectionPro
                   }}
                 >
                   {/* Screen area */}
-                  <div
-                    ref={desktopRef}
-                    className="relative w-full h-full overflow-hidden"
-                    style={{ background: '#4477aa' }}
-                  >
-                    {/* Shutdown Screen */}
-                    {isShutdown && <MacShutdownScreen onPowerOn={handlePowerOn} />}
-
-                    {/* Boot Stages */}
-                    {!isShutdown && (bootStage === 'happy' || bootStage === 'loading') && (
-                      <MacBootScreen stage={bootStage} />
-                    )}
-
-                    {/* Desktop */}
-                    {!isShutdown && bootStage === 'desktop' && (
-                      <div className="absolute inset-0 flex flex-col animate-in fade-in duration-300">
-                        {/* Menu Bar */}
-                        <MacMenuBar
-                          currentTime={currentTime}
-                          onAppleMenuClick={() => setAppleMenuOpen(!appleMenuOpen)}
-                          appleMenuOpen={appleMenuOpen}
-                          onOpenWindow={openWindow}
-                          onShutdown={handleShutdown}
-                        />
-
-                        {/* Desktop Area */}
-                        <div
-                          className="flex-1 relative overflow-hidden"
-                          onClick={() => {
-                            setSelectedIcon(null)
-                            setAppleMenuOpen(false)
-                          }}
-                        >
-                          {/* Wallpaper Background  */}
-                          <div
-                            className="absolute inset-0 overflow-hidden"
-                            style={{
-                              background: 'linear-gradient(180deg, #4a7ab5 0%, #3d6ca8 30%, #2d5a96 60%, #1e4a85 100%)',
-                            }}
-                          >
-                            {/* Large sweeping curve from bottom-left */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '200%',
-                                height: '120%',
-                                left: '-80%',
-                                bottom: '-60%',
-                                background:
-                                  'radial-gradient(ellipse at center, rgba(120, 180, 220, 0.4) 0%, transparent 70%)',
-                                borderRadius: '50%',
-                              }}
-                            />
-                            {/* Upper curve sweeping right */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '180%',
-                                height: '100%',
-                                left: '-40%',
-                                top: '-50%',
-                                background:
-                                  'radial-gradient(ellipse at center, rgba(100, 160, 210, 0.3) 0%, transparent 60%)',
-                                borderRadius: '50%',
-                              }}
-                            />
-                            {/* Middle accent curve */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '150%',
-                                height: '80%',
-                                left: '-20%',
-                                top: '10%',
-                                background:
-                                  'radial-gradient(ellipse at 30% 50%, rgba(140, 190, 230, 0.25) 0%, transparent 50%)',
-                                borderRadius: '50%',
-                                transform: 'rotate(-15deg)',
-                              }}
-                            />
-                            {/* Subtle highlight curve top-left */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '120%',
-                                height: '60%',
-                                left: '-30%',
-                                top: '-20%',
-                                background:
-                                  'radial-gradient(ellipse at 40% 60%, rgba(160, 200, 240, 0.2) 0%, transparent 50%)',
-                                borderRadius: '50%',
-                                transform: 'rotate(-25deg)',
-                              }}
-                            />
-                            {/* Bottom-right glow */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '100%',
-                                height: '80%',
-                                right: '-30%',
-                                bottom: '-20%',
-                                background:
-                                  'radial-gradient(ellipse at center, rgba(90, 150, 200, 0.3) 0%, transparent 60%)',
-                                borderRadius: '50%',
-                              }}
-                            />
-                            {/* Crossing arc from bottom */}
-                            <div
-                              className="absolute"
-                              style={{
-                                width: '250%',
-                                height: '100%',
-                                left: '-75%',
-                                bottom: '-70%',
-                                background:
-                                  'radial-gradient(ellipse at 50% 30%, rgba(130, 185, 225, 0.35) 0%, transparent 45%)',
-                                borderRadius: '50%',
-                              }}
-                            />
-                          </div>
-
-                          {/* Desktop Icons - top right */}
-                          <div className="absolute top-[8px] right-[8px] md:top-[12px] md:right-[12px] flex flex-col gap-2 md:gap-4">
-                            {desktopIcons.map((icon, i) => (
-                              <div
-                                key={icon.id}
-                                className="animate-in fade-in slide-in-from-right-2 duration-300"
-                                style={{ animationDelay: `${i * 100}ms` }}
-                              >
-                                <MacDesktopIcon
-                                  icon={icon.icon}
-                                  label={icon.label}
-                                  selected={selectedIcon === icon.id}
-                                  onSelect={() => setSelectedIcon(icon.id)}
-                                  onDoubleClick={() => openWindow(icon.id)}
-                                />
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Trash Icon - bottom right */}
-                          <div className="absolute bottom-[8px] right-[8px] md:bottom-[12px] md:right-[12px] animate-in fade-in slide-in-from-right-2 duration-300 delay-200">
-                            <MacDesktopIcon
-                              icon={<MacIcon src={trashIcon} alt="Trash" />}
-                              label="Trash"
-                              selected={selectedIcon === 'trash'}
-                              onSelect={() => setSelectedIcon('trash')}
-                              onDoubleClick={() => openWindow('trash')}
-                            />
-                          </div>
-
-                          {/* Hint */}
-                          {windows.filter((w) => w.isOpen).length === 0 && (
-                            <div className="absolute bottom-[8px] left-[8px] md:bottom-[12px] md:left-[12px] animate-in fade-in duration-1000 delay-500">
-                              <p
-                                className="text-[10px] md:text-[11px] text-white/80"
-                                style={{
-                                  fontFamily: 'Chicago, Charcoal, Geneva, sans-serif',
-                                  textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
-                                }}
-                              >
-                                Double-click icon to open
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Windows */}
-                          {(() => {
-                            const openWindows = windows.filter((w) => w.isOpen)
-                            const maxZIndex = Math.max(...openWindows.map((w) => w.zIndex), 0)
-                            return windows
-                              .filter((w) => w.isOpen && w.id !== 'calculator')
-                              .map((win) => (
-                                <MacWindow
-                                  key={win.id}
-                                  window={win}
-                                  onClose={() => closeWindow(win.id)}
-                                  onMaximize={() => maximizeWindow(win.id)}
-                                  onFocus={() => focusWindow(win.id)}
-                                  onDrag={(x, y) => dragWindow(win.id, x, y)}
-                                  onResize={(w, h) => resizeWindow(win.id, w, h)}
-                                  isMobile={isMobile}
-                                  containerRef={desktopRef}
-                                  isActive={win.zIndex === maxZIndex}
-                                />
-                              ))
-                          })()}
-
-                          {/* Calculator - custom window */}
-                          {(() => {
-                            const calcWindow = windows.find((w) => w.id === 'calculator')
-                            if (!calcWindow) return null
-                            return (
-                              <CalculatorWindow
-                                isOpen={calcWindow.isOpen}
-                                position={calcWindow.position}
-                                zIndex={calcWindow.zIndex}
-                                onClose={() => closeWindow('calculator')}
-                                onFocus={() => focusWindow('calculator')}
-                                onDrag={(x, y) => dragWindow('calculator', x, y)}
-                                containerRef={desktopRef}
-                              />
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {desktopScreen}
                 </div>
               </div>
             </div>

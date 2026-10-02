@@ -1,6 +1,13 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import {
+  createScreenHole,
+  createScreenLayer,
+  framingDistance,
+  getScreenFrame,
+  type ScreenFrame,
+} from './computer-screen'
 
 export function initScene(container: HTMLDivElement, onReady?: () => void, onScreenClick?: () => void): () => void {
   // Scene setup
@@ -13,15 +20,27 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   camera.lookAt(0, 0.8, 0)
 
   const isMobile = container.clientWidth < 768
-  const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: false })
+  // alpha: the screen hole makes the canvas see-through over the Mac's glass
+  const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true })
   renderer.setClearColor(0xc8c4c0, 1)
-  renderer.setSize(container.clientWidth, container.clientHeight)
+  renderer.setSize(container.clientWidth, container.clientHeight, false)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
   renderer.shadowMap.enabled = false
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.1
   renderer.outputColorSpace = THREE.SRGBColorSpace
-  container.appendChild(renderer.domElement)
+  Object.assign(renderer.domElement.style, {
+    position: 'absolute',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    display: 'block',
+  })
+
+  // The Mac's screen is real DOM behind the canvas, seen through the hole over the glass
+  const macScreen = createScreenLayer({ screensaverSrc: '/ascii-animation.mp4', computerSrc: '/cruztosh' })
+  macScreen.setSize(container.clientWidth, container.clientHeight)
+  container.append(macScreen.root, renderer.domElement)
 
   // Lighting
   const ambientLight = new THREE.AmbientLight(0xfaf0e6, 0.2)
@@ -406,30 +425,15 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   })
 
   // ============================
-  // Video for CRT screen
-  // ============================
-  const video = document.createElement('video')
-  video.src = '/ascii-animation.mp4'
-  video.crossOrigin = 'anonymous'
-  video.loop = true
-  video.muted = true
-  video.playsInline = true
-  video.autoplay = true
-  video.play().catch(() => {})
-
-  // Canvas-based texture to composite video onto baked texture
-  let macScreenCanvas: HTMLCanvasElement | null = null
-  let macScreenCtx: CanvasRenderingContext2D | null = null
-  let macScreenTexture: THREE.CanvasTexture | null = null
-  let macOrigImage: HTMLImageElement | HTMLCanvasElement | null = null
-
-  // Screen region in texture pixel coordinates (1024x1024)
-  const screenRect = { x: 46, y: 342, w: 233, h: 169 }
-
-  // ============================
   // Load Macintosh Classic model
   // ============================
+  let screenFrame: ScreenFrame | null = null
+  let bootTimer: ReturnType<typeof setTimeout> | undefined
+  let disposed = false
+
   gltfLoader.load('/macintosh_classic_1991.glb', (gltf) => {
+    // Loads can't be cancelled; the scene may be gone by now
+    if (disposed) return
     const mac = gltf.scene
 
     const box = new THREE.Box3().setFromObject(mac)
@@ -447,31 +451,20 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
       if (child instanceof THREE.Mesh) {
         child.castShadow = true
         child.receiveShadow = true
-
-        // Replace baked texture with canvas texture for video compositing
-        const mat = child.material as THREE.MeshStandardMaterial
-        if (mat.map && mat.map.image) {
-          macOrigImage = mat.map.image as HTMLImageElement | HTMLCanvasElement
-
-          macScreenCanvas = document.createElement('canvas')
-          macScreenCanvas.width = 1024
-          macScreenCanvas.height = 1024
-          macScreenCtx = macScreenCanvas.getContext('2d')!
-          macScreenCtx.drawImage(macOrigImage as CanvasImageSource, 0, 0)
-
-          macScreenTexture = new THREE.CanvasTexture(macScreenCanvas)
-          macScreenTexture.colorSpace = THREE.SRGBColorSpace
-          macScreenTexture.flipY = mat.map.flipY
-
-          mat.map = macScreenTexture
-          mat.needsUpdate = true
-        }
-
         screenMesh = child
       }
     })
 
     monitorGroup!.add(mac)
+
+    if (screenMesh) {
+      screenMesh.add(createScreenHole())
+      scene.updateMatrixWorld(true)
+      screenFrame = getScreenFrame(screenMesh)
+      macScreen.place(screenFrame)
+      // On desktop CruzTosh boots in the background, so it's ready behind the screensaver
+      if (!isMobile) bootTimer = setTimeout(macScreen.boot, 1000)
+    }
   })
 
   // ============================
@@ -481,7 +474,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   const originalCamTarget = new THREE.Vector3()
   let isZoomed = false
   let isAnimating = false
-  let zoomedTarget: 'monitor' | 'crucifix' | null = null
+  let zoomedTarget: 'computer' | 'crucifix' | null = null
 
   const animStartPos = new THREE.Vector3()
   const animEndPos = new THREE.Vector3()
@@ -562,6 +555,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
       return
     }
 
+    // Zoomed in on the crucifix (while the computer is in use, the canvas ignores the pointer)
     if (isZoomed) {
       isHoveringCrucifix = false
 
@@ -570,25 +564,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(mouse, camera)
 
-      if (zoomedTarget === 'monitor' && monitorGroup) {
-        const hits = raycaster.intersectObject(monitorGroup, true)
-        if (hits.length > 0) {
-          if (!isHoveringMonitor) {
-            isHoveringMonitor = true
-            tooltip.textContent = '▸ explore cruztosh'
-            tooltip.style.opacity = '1'
-          }
-          renderer.domElement.style.cursor = 'pointer'
-          tooltip.style.left = `${e.clientX - rect.left}px`
-          tooltip.style.top = `${e.clientY - rect.top}px`
-        } else {
-          if (isHoveringMonitor) {
-            isHoveringMonitor = false
-            tooltip.style.opacity = '0'
-          }
-          renderer.domElement.style.cursor = ''
-        }
-      } else if (zoomedTarget === 'crucifix' && crucifixGroup) {
+      if (zoomedTarget === 'crucifix' && crucifixGroup) {
         const onCrucifix = raycaster.intersectObject(crucifixGroup, true).length > 0
         renderer.domElement.style.cursor = onCrucifix ? 'default' : 'pointer'
       }
@@ -659,12 +635,9 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     raycaster.setFromCamera(mouse, camera)
 
     if (isZoomed) {
-      if (zoomedTarget === 'monitor' && monitorGroup) {
-        const monitorHits = raycaster.intersectObject(monitorGroup, true)
-        if (monitorHits.length > 0) {
-          onScreenClick?.()
-          return
-        }
+      if (zoomedTarget === 'computer') {
+        exitComputer()
+        return
       }
       if (zoomedTarget === 'crucifix' && crucifixGroup) {
         const crucifixHits = raycaster.intersectObject(crucifixGroup, true)
@@ -675,17 +648,8 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     }
 
     const monitorIntersects = monitorGroup ? raycaster.intersectObject(monitorGroup, true) : []
-    if (monitorIntersects.length > 0 && screenMesh) {
-      tooltip.style.opacity = '0'
-      originalCamPos.copy(camera.position)
-      originalCamTarget.copy(controls.target)
-      // Target the screen center (upper portion of the Mac model)
-      const monitorWorldPos = new THREE.Vector3()
-      monitorGroup!.getWorldPosition(monitorWorldPos)
-      const screenWorldPos = new THREE.Vector3(monitorWorldPos.x, monitorWorldPos.y + 0.31, monitorWorldPos.z)
-      const zoomTargetPos = new THREE.Vector3(screenWorldPos.x, screenWorldPos.y + 0.01, screenWorldPos.z + 0.5)
-      zoomedTarget = 'monitor'
-      startCameraAnimation(camera.position, zoomTargetPos, controls.target, screenWorldPos, 'in')
+    if (monitorIntersects.length > 0 && screenFrame) {
+      enterComputer(screenFrame)
       return
     }
 
@@ -735,10 +699,11 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1
     raycaster.setFromCamera(mouse, camera)
 
-    // Mobile: tap monitor → navigate directly, no zoom
+    // Phones open CruzTosh on its own page; bigger touch screens use it in place, like a click does
     const monitorIntersects = monitorGroup ? raycaster.intersectObject(monitorGroup, true) : []
     if (monitorIntersects.length > 0) {
-      onScreenClick?.()
+      if (isMobile) onScreenClick?.()
+      else if (screenFrame) enterComputer(screenFrame)
       return
     }
 
@@ -772,15 +737,173 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: true })
 
   // ============================
+  // Computer mode: fly into the screen and use CruzTosh in place
+  // ============================
+  const COMPUTER_FOV = 11
+  // Share of the view the screen takes up, leaving some bezel around it to click out
+  const SCREEN_FILL = 0.88
+  // easeInOutCubic, so the layout keeps pace with the camera
+  const EXPAND_EASE = 'cubic-bezier(0.65, 0, 0.35, 1)'
+  // OrbitControls.update() clamps to this even while disabled, and the screen sits much closer
+  const orbitMinDistance = controls.minDistance
+  let computerActive = false
+
+  function computerPose(frame: ScreenFrame, aspect: number) {
+    const distance = framingDistance(frame, COMPUTER_FOV, aspect, SCREEN_FILL)
+    return { position: frame.center.clone().addScaledVector(frame.normal, distance), target: frame.center.clone() }
+  }
+
+  function placeCamera({ position, target }: { position: THREE.Vector3; target: THREE.Vector3 }) {
+    camera.position.copy(position)
+    controls.target.copy(target)
+    camera.lookAt(target)
+  }
+
+  // While in use, the scene breaks out of the hero into a fixed, full-viewport layer
+  function expandContainer() {
+    const { left, top, width, height } = container.getBoundingClientRect()
+    Object.assign(container.style, {
+      position: 'fixed',
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      zIndex: '60',
+    })
+    // Commit the starting box so the transition runs from it
+    void container.offsetWidth
+    Object.assign(container.style, {
+      transition: ['left', 'top', 'width', 'height'].map((p) => `${p} ${animDuration}s ${EXPAND_EASE}`).join(', '),
+      left: '0px',
+      top: '0px',
+      width: '100vw',
+      height: '100dvh',
+    })
+    document.documentElement.style.overflow = 'hidden'
+  }
+
+  // Heads back to the spot in the hero the scene came from
+  function collapseContainer() {
+    const parent = container.parentElement
+    if (!parent) return
+    const { left, top } = parent.getBoundingClientRect()
+    Object.assign(container.style, {
+      left: `${left + parent.clientLeft}px`,
+      top: `${top + parent.clientTop}px`,
+      width: `${parent.clientWidth}px`,
+      height: `${parent.clientHeight}px`,
+    })
+  }
+
+  function restoreContainer() {
+    container.removeAttribute('style')
+    document.documentElement.style.overflow = ''
+  }
+
+  function enterComputer(frame: ScreenFrame) {
+    if (isMobile || isAnimating || isZoomed) return
+    tooltip.style.opacity = '0'
+    isHoveringMonitor = false
+    isHoveringCrucifix = false
+    renderer.domElement.style.cursor = ''
+    originalCamPos.copy(camera.position)
+    originalCamTarget.copy(controls.target)
+    zoomedTarget = 'computer'
+    controls.minDistance = 0
+    macScreen.boot()
+    macScreen.wake()
+    expandContainer()
+    // Framed for the full viewport the container is growing into
+    const pose = computerPose(frame, window.innerWidth / window.innerHeight)
+    startCameraAnimation(camera.position, pose.position, controls.target, pose.target, 'in', COMPUTER_FOV)
+  }
+
+  // Once the camera has landed, the pointer goes to the screen instead of the scene
+  function activateComputer() {
+    computerActive = true
+    if (screenFrame) placeCamera(computerPose(screenFrame, window.innerWidth / window.innerHeight))
+    renderer.domElement.style.pointerEvents = 'none'
+    macScreen.setInteractive(true)
+  }
+
+  function exitComputer() {
+    if (!computerActive || isAnimating) return
+    computerActive = false
+    macScreen.setInteractive(false)
+    macScreen.releaseFocus()
+    renderer.domElement.style.pointerEvents = ''
+    tooltip.style.opacity = '0'
+    collapseContainer()
+    startCameraAnimation(camera.position, originalCamPos, controls.target, originalCamTarget, 'out')
+  }
+
+  // Around the screen: a hint, and a click leaves the computer
+  const isOnScreen = (target: EventTarget | null) => target instanceof Node && macScreen.element.contains(target)
+
+  const onLayerPointer = (e: MouseEvent) => {
+    if (!computerActive || isOnScreen(e.target)) {
+      tooltip.style.opacity = '0'
+      return
+    }
+    const rect = container.getBoundingClientRect()
+    tooltip.textContent = 'Click to exit'
+    tooltip.style.opacity = '1'
+    tooltip.style.left = `${e.clientX - rect.left}px`
+    tooltip.style.top = `${e.clientY - rect.top}px`
+  }
+
+  const onLayerLeave = () => {
+    tooltip.style.opacity = '0'
+  }
+
+  const onLayerClick = (e: MouseEvent) => {
+    if (!isOnScreen(e.target)) exitComputer()
+  }
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') exitComputer()
+  }
+
+  // CruzTosh asks to leave when Esc is pressed with no windows open
+  const onMessage = (e: MessageEvent) => {
+    if (e.origin !== window.location.origin || !macScreen.isFrom(e.source)) return
+    if (e.data?.type === 'cruztosh:exit') exitComputer()
+  }
+
+  macScreen.root.addEventListener('mousemove', onLayerPointer)
+  macScreen.root.addEventListener('mouseover', onLayerPointer)
+  macScreen.root.addEventListener('mouseleave', onLayerLeave)
+  macScreen.root.addEventListener('click', onLayerClick)
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('message', onMessage)
+
+  // ============================
   // Animation loop
   // ============================
   let animFrameId: number
   const clock = new THREE.Clock()
   let firstFrame = true
-  let videoFrameCount = 0
   let pendingResize = false
   let lastW = container.clientWidth
   let lastH = container.clientHeight
+
+  function finishCameraAnimation() {
+    isAnimating = false
+    if (animDirection === 'in') {
+      isZoomed = true
+      controls.enabled = false
+      if (zoomedTarget === 'computer') activateComputer()
+    } else {
+      if (zoomedTarget === 'computer') {
+        restoreContainer()
+        controls.minDistance = orbitMinDistance
+      }
+      isZoomed = false
+      zoomedTarget = null
+      controls.enabled = true
+      renderer.domElement.style.cursor = ''
+    }
+  }
 
   function animate() {
     animFrameId = requestAnimationFrame(animate)
@@ -795,53 +918,31 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
         lastH = h
         camera.aspect = w / h
         camera.updateProjectionMatrix()
-        renderer.setSize(w, h)
+        renderer.setSize(w, h, false)
+        macScreen.setSize(w, h)
+        if (computerActive && screenFrame) placeCamera(computerPose(screenFrame, camera.aspect))
       }
     }
 
     // Camera animation
     if (isAnimating) {
-      animProgress += dt / animDuration
-      if (animProgress >= 1) {
-        animProgress = 1
-        isAnimating = false
-        if (animDirection === 'in') {
-          isZoomed = true
-          controls.enabled = false
-        } else {
-          isZoomed = false
-          zoomedTarget = null
-          controls.enabled = true
-          renderer.domElement.style.cursor = ''
-        }
-      }
-      const t = easeInOutCubic(Math.min(animProgress, 1))
+      animProgress = Math.min(animProgress + dt / animDuration, 1)
+      const t = easeInOutCubic(animProgress)
       camera.position.lerpVectors(animStartPos, animEndPos, t)
       controls.target.lerpVectors(animStartTarget, animEndTarget, t)
       camera.fov = animStartFOV + (animEndFOV - animStartFOV) * t
       camera.updateProjectionMatrix()
       camera.lookAt(controls.target)
       controls.update()
+      if (animProgress === 1) finishCameraAnimation()
     }
 
     if (!isZoomed && !isAnimating) {
       controls.update()
     }
 
-    // Draw video frame onto Mac screen texture
-    if (macScreenCtx && macScreenTexture && macOrigImage && video.readyState >= 2) {
-      macScreenCtx.drawImage(macOrigImage!, 0, 0)
-      macScreenCtx.save()
-      macScreenCtx.translate(screenRect.x, screenRect.y + screenRect.h)
-      macScreenCtx.scale(1, -1)
-      macScreenCtx.drawImage(video, 0, 0, screenRect.w, screenRect.h)
-      macScreenCtx.restore()
-      if (videoFrameCount++ % 2 === 0) {
-        macScreenTexture.needsUpdate = true
-      }
-    }
-
     renderer.render(scene, camera)
+    macScreen.render(camera)
 
     if (firstFrame) {
       firstFrame = false
@@ -862,6 +963,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   // Cleanup
   // ============================
   return () => {
+    disposed = true
     cancelAnimationFrame(animFrameId)
     resizeObserver.disconnect()
 
@@ -872,10 +974,16 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     renderer.domElement.removeEventListener('touchend', onTouchEnd)
     tooltip.remove()
 
-    video.pause()
-    video.src = ''
-    video.load()
-    if (macScreenTexture) macScreenTexture.dispose()
+    clearTimeout(bootTimer)
+    macScreen.root.removeEventListener('mousemove', onLayerPointer)
+    macScreen.root.removeEventListener('mouseover', onLayerPointer)
+    macScreen.root.removeEventListener('mouseleave', onLayerLeave)
+    macScreen.root.removeEventListener('click', onLayerClick)
+    window.removeEventListener('keydown', onKeyDown)
+    window.removeEventListener('message', onMessage)
+    macScreen.dispose()
+    // Unmounting mid-use must not leave the page locked
+    if (zoomedTarget === 'computer') restoreContainer()
 
     function disposeScene(s: THREE.Scene | THREE.Group) {
       s.traverse((obj) => {
