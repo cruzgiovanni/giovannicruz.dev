@@ -4,8 +4,6 @@ import { contactContent } from '@/data/lp-info'
 
 const notFoundNavLinks = [
   { label: 'Home', href: '/' },
-  { label: 'Serviços', href: '/#services' },
-  { label: 'Sobre', href: '/#about' },
   { label: 'Contato', href: contactContent.whatsapp },
 ]
 

@@ -1,10 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { motion, AnimatePresence } from 'framer-motion'
 import { heroContent } from '@/data/lp-info'
-import { LineShadowText } from '@/components/ui/line-shadow-text'
 
 const sceneHeight = 'flex-1 min-h-[45svh] md:flex-none md:h-[65vh]'
 
@@ -19,38 +17,15 @@ const ComputerSceneCanvas = dynamic(
   { ssr: false },
 )
 
-const { words, mainTitle, subtitle } = heroContent
+const { greeting, role } = heroContent
 
 export function Hero() {
-  const [currentWord, setCurrentWord] = useState(0)
   const [sceneReady, setSceneReady] = useState(false)
 
   const onSceneReady = useCallback(() => setSceneReady(true), [])
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>
-
-    const start = () => {
-      interval = setInterval(() => {
-        setCurrentWord((prev) => (prev + 1) % words.length)
-      }, 2000)
-    }
-
-    const onVisibility = () => {
-      clearInterval(interval)
-      if (!document.hidden) start()
-    }
-
-    start()
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [])
-
   return (
-    <section className="bg-background overflow-x-hidden tracking-tight flex flex-col h-[100svh] md:block md:h-auto">
+    <section className="bg-background overflow-x-hidden flex flex-col h-[100svh] md:h-auto md:min-h-[100svh]">
       {/* 3D Scene with reveal overlay */}
       <div className={`relative w-full ${sceneHeight} bg-background cursor-grab active:cursor-grabbing border`}>
         <ComputerSceneCanvas onReadyAction={onSceneReady} />
@@ -90,38 +65,12 @@ export function Hero() {
         `}</style>
       </div>
 
-      {/* Hero Content */}
-      <div className="px-2 md:px-4 py-8 md:py-12">
-        <div className="font-sans font-bold leading-[0.97] uppercase">
-          <div>
-            <span className="block text-[8vw] md:text-[6vh] lg:text-[8vh] text-[#E6E6E6] tracking-tight">
-              {mainTitle.line1}
-            </span>
-          </div>
-
-          <div className="relative">
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={words[currentWord]}
-                className="block text-[8vw] md:text-[6vh] lg:text-[8vh] text-[#E6E6E6] my-0.5 tracking-tight"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <LineShadowText shadowColor="var(--primary)">{words[currentWord]}</LineShadowText>
-              </motion.span>
-            </AnimatePresence>
-          </div>
-
-          <div>
-            <span className="block text-[8vw] md:text-[6vh] lg:text-[8vh] text-[#E6E6E6] tracking-tight">
-              {mainTitle.line2}
-            </span>
-          </div>
-        </div>
-
-        <p className="mt-4 text-[#E6E6E6] text-[0.85rem] md:text-lg tracking-tight lg:max-w-[50%]">{subtitle}</p>
+      {/* Hero content */}
+      <div className="flex shrink-0 flex-col justify-end px-2 pt-10 pb-6 md:flex-1 md:px-4 md:pb-8">
+        <h1 className="font-sans text-[clamp(1.75rem,4vw,3.25rem)] font-medium leading-[1.05] tracking-[-0.03em]">
+          <span className="block text-foreground">{greeting}</span>
+          <span className="block text-neutral-500">{role}</span>
+        </h1>
       </div>
     </section>
   )

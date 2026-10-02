@@ -7,8 +7,6 @@ import { useEffect, useState } from 'react'
 
 const portfolioNavLinks = [
   { label: 'Home', href: '/' },
-  { label: 'Serviços', href: '/#services' },
-  { label: 'Sobre', href: '/#about' },
   { label: 'Contato', href: contactContent.whatsapp },
 ]
 

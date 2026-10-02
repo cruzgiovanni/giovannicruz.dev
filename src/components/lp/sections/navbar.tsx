@@ -6,10 +6,9 @@ import Image from 'next/image'
 import React from 'react'
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import art from '../../../../public/art.jpeg'
-import { navbarContent, footerContent } from '@/data/lp-info'
+import { navbarContent } from '@/data/lp-info'
 
-const { logo, navLinks: defaultNavLinks } = navbarContent
-const { navLinks: defaultMenuLinks, socialLinks } = footerContent
+const { logo, navLinks: defaultNavLinks, menuLinks: defaultMenuLinks, socialLinks } = navbarContent
 
 // Grid configuration
 const COLS = 5
