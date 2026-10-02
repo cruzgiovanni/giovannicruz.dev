@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Github, Linkedin, Mail, MapPin, ExternalLink, Code } from 'lucide-react'
+import { Mail, MapPin, ExternalLink, Code } from 'lucide-react'
+import { Github, Linkedin } from '@/components/ui/brand-icons'
 import { skillCategories, aboutSection, projects, hero, contactSection } from '@/data/info'
 import { siteConfig } from '@/data/config'
 import art from '../../../../public/art.jpeg'
