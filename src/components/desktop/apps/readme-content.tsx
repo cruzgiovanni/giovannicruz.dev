@@ -1,461 +1,681 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
-import { Mail, MapPin, ExternalLink, Code } from 'lucide-react'
-import { Github, Linkedin } from '@/components/ui/brand-icons'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import Image, { type StaticImageData } from 'next/image'
+import {
+  RichTextEditor,
+  defaultLabels,
+  type BlockType,
+  type RichTextEditorHandle,
+  type RichTextEditorLabels,
+} from '@/components/arc/rich-text-editor/rich-text-editor'
+import { useDesktop, type AppMenu } from '@/components/desktop/app-chrome'
 import { useLocale } from '@/components/locale-provider'
-import { getInfo, SHOW_PROJECTS } from '@/data/info'
-import { siteConfig } from '@/data/config'
+import { getReadmeFiles } from '@/data/readme'
+import type { Locale, Localized } from '@/lib/i18n'
 import art from '../../../../public/art.jpeg'
 import me from '../../../../public/me.jpeg'
+import readmeIcon from '../../../../public/mac-icons/readme.png'
+import styles from './readme-content.module.css'
 
-type Page = 'home' | 'about' | 'skills' | 'projects' | 'contact'
+type View = 'formatted' | 'markdown'
+type Mark = 'bold' | 'italic' | 'strike' | 'code'
+
+const VIEWS: View[] = ['formatted', 'markdown']
+
+const MONO = 'var(--font-geist-mono), ui-monospace, monospace'
 
 const copy = {
   en: {
-    nav: { home: 'HOME', about: 'ABOUT', skills: 'SKILLS', projects: 'PROJECTS', contact: 'CONTACT' },
-    portfolio: 'Portfolio',
-    welcome: 'Welcome',
-    intro: (name: string) => `I'm ${name}`,
-    cruztosh:
-      'a portfolio disguised as a machine. Inspired by Mac OS 9, 1999. With my own touch. Navigate the menus. Open the windows. Explore.',
+    app: 'ReadMe',
+    files: 'Files',
+    views: { formatted: 'Formatted', markdown: 'Markdown' },
+    words: (n: number) => `${n} ${n === 1 ? 'word' : 'words'}`,
+    edited: 'Edited, not saved',
+    untitled: 'untitled',
+    placeholder: 'Start writing',
+    blockHint: 'Type / for blocks',
     mobileTip: 'Tip: Visit on a computer for the full retro Macintosh (Cruztosh) experience!',
-    about: 'About Me',
-    quickFacts: 'Quick Facts',
-    skills: 'Skills',
-    projects: 'Projects',
-    source: 'Source',
-    code: 'Code',
-    demo: 'Demo',
-    contact: 'Contact',
-    contactIntro: "Feel free to reach out! I'm always open to discussing new projects, creative ideas, or opportunities.",
-    findMe: 'Find me on',
+    menus: {
+      file: 'File',
+      edit: 'Edit',
+      format: 'Format',
+      view: 'View',
+      newFile: 'New File',
+      save: 'Save',
+      revert: 'Revert',
+      restore: 'Restore Original',
+      delete: 'Delete File',
+      undo: 'Undo',
+      redo: 'Redo',
+      focus: 'Focus Mode',
+    },
   },
   pt: {
-    // "Habilidades" doesn't fit the five-column nav on phones
-    nav: { home: 'INÍCIO', about: 'SOBRE', skills: 'STACK', projects: 'PROJETOS', contact: 'CONTATO' },
-    portfolio: 'Portfólio',
-    welcome: 'Bem-vindo',
-    intro: (name: string) => `Sou o ${name}`,
-    cruztosh:
-      'um portfólio disfarçado de máquina. Inspirado no Mac OS 9, de 1999. Com o meu toque. Navegue pelos menus. Abra as janelas. Explore.',
+    app: 'Leia-me',
+    files: 'Arquivos',
+    views: { formatted: 'Formatado', markdown: 'Markdown' },
+    words: (n: number) => `${n} ${n === 1 ? 'palavra' : 'palavras'}`,
+    edited: 'Editado, não salvo',
+    untitled: 'sem-titulo',
+    placeholder: 'Comece a escrever',
+    blockHint: 'Digite / para blocos',
     mobileTip: 'Dica: acesse pelo computador para a experiência completa do Macintosh retrô (Cruztosh)!',
-    about: 'Sobre Mim',
-    quickFacts: 'Fatos Rápidos',
-    skills: 'Stack',
-    projects: 'Projetos',
-    source: 'Código',
-    code: 'Código',
-    demo: 'Demo',
-    contact: 'Contato',
-    contactIntro:
-      'Fique à vontade para entrar em contato! Estou sempre aberto a conversar sobre novos projetos, ideias criativas ou oportunidades.',
-    findMe: 'Me encontre em',
+    menus: {
+      file: 'Arquivo',
+      edit: 'Editar',
+      format: 'Formatar',
+      view: 'Visualizar',
+      newFile: 'Novo arquivo',
+      save: 'Salvar',
+      revert: 'Reverter',
+      restore: 'Restaurar original',
+      delete: 'Apagar arquivo',
+      undo: 'Desfazer',
+      redo: 'Refazer',
+      focus: 'Modo foco',
+    },
   },
+}
+
+const editorLabels: Localized<RichTextEditorLabels> = {
+  en: defaultLabels,
+  pt: {
+    blocks: {
+      p: 'Texto',
+      h1: 'Título 1',
+      h2: 'Título 2',
+      h3: 'Título 3',
+      ul: 'Lista',
+      ol: 'Lista numerada',
+      blockquote: 'Citação',
+      pre: 'Bloco de código',
+      hr: 'Divisória',
+    },
+    blocksMenu: 'Blocos',
+    formatting: 'Formatação',
+    bold: 'Negrito',
+    italic: 'Itálico',
+    strikethrough: 'Tachado',
+    inlineCode: 'Código',
+    link: 'Link',
+    editLink: 'Editar link',
+    backToFormatting: 'Voltar à formatação',
+    linkPlaceholder: 'Cole ou digite um link',
+    linkAddress: 'Endereço do link',
+    removeLink: 'Remover link',
+    applyLink: 'Aplicar link',
+    undone: 'Desfeito',
+    redone: 'Refeito',
+    formatted: 'Formatado',
+    linkAdded: 'Link adicionado',
+    linkRemoved: 'Link removido',
+    blockAdded: (block) => `Bloco adicionado: ${block}`,
+  },
+}
+
+interface Figure {
+  image: StaticImageData
+  alt: string
+  path: string
+}
+
+// Pictures pinned to the top of a file. The editor drops images from what it edits, so they sit above it:
+// shown as pictures in the formatted view and as Markdown in the source view, but never editable.
+const FIGURES: Partial<Record<string, Figure[]>> = {
+  home: [{ image: art, alt: 'Logo', path: '/art.jpeg' }],
+  about: [{ image: me, alt: 'Giovanni Cruz', path: '/me.jpeg' }],
+}
+
+/** A file in the ReadMe. Edits stay in `current` until saved; saving keeps them in this browser. */
+interface Doc {
+  id: string
+  name: string
+  /** The portfolio's text; empty for files made here */
+  original: string
+  saved: string
+  current: string
+  created: boolean
+  /** Whether it's kept in this browser yet (new files are, from their first save) */
+  stored: boolean
+  /** Bumped when the text is replaced from outside the editor (revert, restore), so it reloads */
+  revision: number
+}
+
+interface Stored {
+  saved: Record<string, string>
+  created: { id: string; name: string }[]
+}
+
+const storageKey = (locale: Locale) => `cruztosh-readme-${locale}`
+
+function readStored(locale: Locale): Stored {
+  const stored: Stored = { saved: {}, created: [] }
+  try {
+    const value = JSON.parse(localStorage.getItem(storageKey(locale)) ?? 'null')
+    if (value?.saved && typeof value.saved === 'object') {
+      for (const [id, text] of Object.entries(value.saved)) if (typeof text === 'string') stored.saved[id] = text
+    }
+    if (Array.isArray(value?.created)) {
+      for (const file of value.created) {
+        if (typeof file?.id === 'string' && typeof file?.name === 'string') stored.created.push({ id: file.id, name: file.name })
+      }
+    }
+  } catch {
+    // Unreadable or unavailable storage: start from the portfolio's files
+  }
+  return stored
+}
+
+// What saving keeps, as stored; null when nothing differs from the portfolio
+function serializeStored(docs: Doc[]) {
+  const kept = docs.filter((doc) => (doc.created ? doc.stored : doc.saved !== doc.original))
+  if (!kept.length) return null
+  return JSON.stringify({
+    saved: Object.fromEntries(kept.map((doc) => [doc.id, doc.saved])),
+    created: kept.filter((doc) => doc.created).map(({ id, name }) => ({ id, name })),
+  } satisfies Stored)
+}
+
+function writeStored(locale: Locale, serialized: string | null) {
+  try {
+    if (serialized === null) localStorage.removeItem(storageKey(locale))
+    else localStorage.setItem(storageKey(locale), serialized)
+  } catch {
+    // Storage full or blocked: saving still works for this visit
+  }
+}
+
+function loadDocs(locale: Locale): Doc[] {
+  const stored = readStored(locale)
+  const docs: Doc[] = getReadmeFiles(locale).map((file) => {
+    const saved = stored.saved[file.id] ?? file.markdown
+    return { id: file.id, name: file.name, original: file.markdown, saved, current: saved, created: false, stored: true, revision: 0 }
+  })
+  for (const file of stored.created) {
+    const saved = stored.saved[file.id] ?? ''
+    docs.push({ id: file.id, name: file.name, original: '', saved, current: saved, created: true, stored: true, revision: 0 })
+  }
+  return docs
+}
+
+// Words a reader would count: link text without its address, no Markdown syntax
+const countWords = (markdown: string) =>
+  markdown
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => /[\p{L}\p{N}]/u.test(word)).length
+
+type EditHandler = (markdown: string) => void
+
+function DocumentIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="size-3 shrink-0" aria-hidden="true">
+      <path d="M3 1 L3 15 L13 15 L13 4 L10 1 Z" fill="#ffffff" stroke="#000" strokeWidth="1" />
+      <path d="M10 1 L10 4 L13 4" fill="#cccccc" stroke="#000" strokeWidth="1" />
+    </svg>
+  )
+}
+
+function Figures({ figures }: { figures: Figure[] }) {
+  return (
+    <div className={`mb-9 flex gap-3 ${styles.figures}`} onContextMenu={(event) => event.preventDefault()}>
+      {figures.map((figure) => (
+        <div key={figure.path} className="border border-[#cccccc] bg-[#f5f5f5] p-1">
+          <Image
+            src={figure.image}
+            alt={figure.alt}
+            width={112}
+            height={112}
+            draggable={false}
+            // The ReadMe opens on boot, so these are the largest things on screen (LCP)
+            loading="eager"
+            className="size-24 select-none object-cover md:size-28"
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// The child of `parent` that `node` is in (or is)
+function childHolding(parent: Node, node: Node) {
+  let child: Node | null = node
+  while (child && child.parentNode !== parent) child = child.parentNode
+  return child
+}
+
+/** What focus mode keeps lit for the caret: the top-level block it's in, plus the item when that block is a list. */
+function focusedBlocks(editor: HTMLElement, selection: Selection | null): Element[] | null {
+  let node = selection?.focusNode ?? null
+  // A caret between blocks sits on the editor itself
+  if (node === editor) node = editor.childNodes[Math.min(selection!.focusOffset, editor.childNodes.length - 1)] ?? null
+  if (!node || node === editor || !editor.contains(node)) return null
+  const block = childHolding(editor, node)
+  if (block?.nodeType !== Node.ELEMENT_NODE) return null
+  const item = /^(UL|OL)$/.test(block.nodeName) ? childHolding(block, node) : null
+  return item?.nodeName === 'LI' ? [block as Element, item as Element] : [block as Element]
+}
+
+function FormattedDocument({
+  name,
+  markdown,
+  figures,
+  focus,
+  editorRef,
+  onEdit,
+}: {
+  name: string
+  markdown: string
+  figures?: Figure[]
+  focus: boolean
+  editorRef: RefObject<RichTextEditorHandle | null>
+  onEdit: EditHandler
+}) {
+  const locale = useLocale()
+  const t = copy[locale]
+  const rootRef = useRef<HTMLDivElement>(null)
+  // The editor's first change is it reporting what it loaded (normalized), not an edit. Changes that
+  // come back to it hand back the text as it was given, so the file reads as unchanged again.
+  const loaded = useRef<string | null>(null)
+  const given = useRef(markdown)
+
+  // Focus mode: everything but the block holding the caret fades back, as in iA Writer. The document and the
+  // block in focus are marked in the DOM (the editor keeps such marks out of its history and output); the CSS dims the rest.
+  useEffect(() => {
+    const root = rootRef.current
+    const editor = root?.querySelector<HTMLElement>('[role="textbox"]')
+    if (!focus || !root || !editor) return
+
+    const show = (blocks: Element[]) => {
+      editor.querySelectorAll('[data-focus]').forEach((block) => {
+        if (!blocks.includes(block)) block.removeAttribute('data-focus')
+      })
+      blocks.forEach((block) => block.setAttribute('data-focus', ''))
+      root.toggleAttribute('data-focusing', blocks.length > 0)
+    }
+    // Follows the caret. While it's outside the document (in the menu bar, say), the block it left stays in focus.
+    const follow = () =>
+      show(focusedBlocks(editor, window.getSelection()) ?? Array.from(editor.querySelectorAll('[data-focus]')))
+
+    // Turned on with no caret in the document: one goes to the start of the first block in view, so it shows at once
+    if (!focusedBlocks(editor, window.getSelection())) {
+      const top = root.closest('main')?.getBoundingClientRect().top ?? 0
+      const block = Array.from(editor.children).find(
+        (child) => child.nodeName !== 'HR' && child.getBoundingClientRect().bottom > top,
+      )
+      if (block) {
+        const target = /^(UL|OL)$/.test(block.nodeName) ? (block.querySelector('li') ?? block) : block
+        const text = document.createTreeWalker(target, NodeFilter.SHOW_TEXT).nextNode()
+        editor.focus({ preventScroll: true })
+        window.getSelection()?.collapse(text ?? target, 0)
+      }
+    }
+    follow()
+
+    // The editor rebuilds blocks as it goes (a new line, a heading, an undo); the new ones come in already marked
+    const observer = new MutationObserver(follow)
+    observer.observe(editor, { childList: true, subtree: true })
+    document.addEventListener('selectionchange', follow)
+    return () => {
+      document.removeEventListener('selectionchange', follow)
+      observer.disconnect()
+      show([])
+    }
+  }, [focus])
+
+  return (
+    <div ref={rootRef}>
+      {figures && <Figures figures={figures} />}
+      <RichTextEditor
+        ref={editorRef}
+        defaultMarkdown={markdown}
+        onChange={({ markdown: next }) => {
+          if (loaded.current === null) {
+            loaded.current = next
+            return
+          }
+          onEdit(next === loaded.current ? given.current : next)
+        }}
+        labels={editorLabels[locale]}
+        placeholder={t.placeholder}
+        blockHint={t.blockHint}
+        aria-label={name}
+      />
+    </div>
+  )
+}
+
+function MarkdownDocument({ name, markdown, onEdit }: { name: string; markdown: string; onEdit: EditHandler }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  // Grows with its content, so the page scrolls rather than the field
+  const fit = () => {
+    const field = ref.current
+    if (!field) return
+    const scroller = field.closest('main')
+    const scrollTop = scroller?.scrollTop ?? 0
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight}px`
+    if (scroller) scroller.scrollTop = scrollTop
+  }
+
+  useLayoutEffect(fit, [markdown])
+
+  // Rewrapping at a new width changes the height too
+  useLayoutEffect(() => {
+    const field = ref.current
+    if (!field) return
+    let width = field.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (field.clientWidth === width) return
+      width = field.clientWidth
+      fit()
+    })
+    observer.observe(field)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <textarea
+      ref={ref}
+      value={markdown}
+      onChange={(event) => onEdit(event.target.value)}
+      rows={1}
+      spellCheck={false}
+      aria-label={name}
+      className="block w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[13px] leading-[1.75] text-[#1a1a1a] outline-none"
+      style={{ fontFamily: MONO }}
+    />
+  )
 }
 
 export function ReadmeContent() {
   const locale = useLocale()
   const t = copy[locale]
-  const { skillCategories, aboutSection, projects, hero, contactSection } = getInfo(locale)
-  const [currentPage, setCurrentPage] = useState<Page>('home')
+  const labels = editorLabels[locale]
+  const desktop = useDesktop()
+  const editorRef = useRef<RichTextEditorHandle | null>(null)
 
-  const navItems: { id: Page; label: string }[] = [
-    { id: 'home', label: t.nav.home },
-    { id: 'about', label: t.nav.about },
-    { id: 'skills', label: t.nav.skills },
-    ...(SHOW_PROJECTS ? [{ id: 'projects' as const, label: t.nav.projects }] : []),
-    { id: 'contact', label: t.nav.contact },
-  ]
+  const [docs, setDocs] = useState(() => loadDocs(locale))
+  const [activeId, setActiveId] = useState(() => docs[0].id)
+  const [view, setView] = useState<View>('formatted')
+  const [focus, setFocus] = useState(false)
+
+  const active = docs.find((doc) => doc.id === activeId) ?? docs[0]
+  const figures = FIGURES[active.id]
+  const dirty = active.current !== active.saved
+  const saveable = dirty || !active.stored
+  const restorable = !active.created && (active.saved !== active.original || active.current !== active.original)
+  const activeCreated = active.created
+
+  // What's saved lives in this browser; typing alone doesn't touch it
+  const stored = serializeStored(docs)
+  useEffect(() => writeStored(locale, stored), [locale, stored])
+
+  const update = (id: string, change: (doc: Doc) => Doc) =>
+    setDocs((current) => current.map((doc) => (doc.id === id ? change(doc) : doc)))
+
+  const edit: EditHandler = (next) => {
+    const id = active.id
+    update(id, (doc) => (doc.current === next ? doc : { ...doc, current: next }))
+  }
+
+  // Commands, for the menu bar and shortcuts
+  const save = () => {
+    if (saveable) update(active.id, (doc) => ({ ...doc, saved: doc.current, stored: true }))
+  }
+  const revert = () => update(active.id, (doc) => ({ ...doc, current: doc.saved, revision: doc.revision + 1 }))
+  const restore = () =>
+    update(active.id, (doc) => ({ ...doc, saved: doc.original, current: doc.original, revision: doc.revision + 1 }))
+  const create = () => {
+    let name = `${t.untitled}.md`
+    for (let n = 2; docs.some((doc) => doc.name === name); n++) name = `${t.untitled}-${n}.md`
+    const id = `new-${Date.now().toString(36)}`
+    setDocs((current) => [
+      ...current,
+      { id, name, original: '', saved: '', current: '', created: true, stored: false, revision: 0 },
+    ])
+    setActiveId(id)
+  }
+  const remove = () => {
+    const index = docs.findIndex((doc) => doc.id === active.id)
+    setDocs((current) => current.filter((doc) => doc.id !== active.id))
+    setActiveId((docs[index - 1] ?? docs[index + 1]).id)
+  }
+  // Marks and blocks act on the editor's own selection, never on text outside it
+  const inEditor = () => {
+    const anchor = window.getSelection()?.anchorNode
+    return !!anchor && !!editorRef.current?.element?.contains(anchor)
+  }
+  const format = (mark: Mark) => {
+    if (inEditor()) editorRef.current?.format(mark)
+  }
+  const setBlock = (type: BlockType) => {
+    if (inEditor()) editorRef.current?.setBlock(type)
+  }
+  const undo = () => (view === 'formatted' ? editorRef.current?.undo() : document.execCommand('undo'))
+  const redo = () => (view === 'formatted' ? editorRef.current?.redo() : document.execCommand('redo'))
+
+  const commands = useRef({ save, revert, restore, create, remove, format, setBlock, undo, redo })
+  useLayoutEffect(() => {
+    commands.current = { save, revert, restore, create, remove, format, setBlock, undo, redo }
+  })
+
+  // While this window is in front, the menu bar is the ReadMe's and the window is titled after the open file
+  const title = `${t.app} — ${active.name}${dirty ? ' •' : ''}`
+  const formatted = view === 'formatted'
+  useEffect(() => {
+    if (!desktop) return
+    const run = (command: 'save' | 'revert' | 'restore' | 'create' | 'remove' | 'undo' | 'redo') => () => {
+      commands.current[command]()
+    }
+    const menus: AppMenu[] = [
+      {
+        title: t.menus.file,
+        items: [
+          { label: t.menus.newFile, onSelect: run('create') },
+          'separator',
+          { label: t.menus.save, shortcut: '⌘S', disabled: !saveable, onSelect: run('save') },
+          { label: t.menus.revert, disabled: !dirty, onSelect: run('revert') },
+          activeCreated
+            ? { label: t.menus.delete, onSelect: run('remove') }
+            : { label: t.menus.restore, disabled: !restorable, onSelect: run('restore') },
+        ],
+      },
+      {
+        title: t.menus.edit,
+        items: [
+          { label: t.menus.undo, shortcut: '⌘Z', onSelect: run('undo') },
+          { label: t.menus.redo, shortcut: '⇧⌘Z', onSelect: run('redo') },
+        ],
+      },
+      {
+        title: t.menus.format,
+        items: [
+          { label: labels.bold, shortcut: '⌘B', disabled: !formatted, onSelect: () => commands.current.format('bold') },
+          { label: labels.italic, shortcut: '⌘I', disabled: !formatted, onSelect: () => commands.current.format('italic') },
+          {
+            label: labels.strikethrough,
+            shortcut: '⇧⌘X',
+            disabled: !formatted,
+            onSelect: () => commands.current.format('strike'),
+          },
+          { label: labels.inlineCode, shortcut: '⌘E', disabled: !formatted, onSelect: () => commands.current.format('code') },
+          'separator',
+          { label: labels.blocks.h1, disabled: !formatted, onSelect: () => commands.current.setBlock('h1') },
+          { label: labels.blocks.h2, disabled: !formatted, onSelect: () => commands.current.setBlock('h2') },
+          { label: labels.blocks.blockquote, disabled: !formatted, onSelect: () => commands.current.setBlock('blockquote') },
+        ],
+      },
+      {
+        title: t.menus.view,
+        items: [
+          ...VIEWS.map((option) => ({ label: t.views[option], checked: view === option, onSelect: () => setView(option) })),
+          'separator' as const,
+          { label: t.menus.focus, checked: focus, disabled: !formatted, onSelect: () => setFocus((on) => !on) },
+        ],
+      },
+    ]
+    desktop.publish('readme', { name: t.app, icon: readmeIcon, title, menus })
+  }, [desktop, t, labels, title, saveable, dirty, restorable, activeCreated, view, formatted, focus])
+
+  useEffect(() => () => desktop?.publish('readme', null), [desktop])
+
+  // ⌘S saves the open file, instead of the browser saving the page
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 's') {
+      event.preventDefault()
+      save()
+    }
+  }
+
+  // Links in the formatted view open on a plain click, as long as it isn't the end of a text selection
+  const openLink = (event: React.MouseEvent) => {
+    const link = (event.target as Element).closest('a[href]')
+    if (!link || !window.getSelection()?.isCollapsed) return
+    event.preventDefault()
+    const href = link.getAttribute('href') ?? ''
+    if (href.startsWith('mailto:')) window.location.href = href
+    else window.open(href, '_blank', 'noopener,noreferrer')
+  }
+
+  // Esc that closed one of the editor's menus shouldn't also close the window
+  const keepHandledEscape = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape' && event.defaultPrevented) event.stopPropagation()
+  }
 
   return (
-    <div
-      className="flex flex-col md:flex-row h-full min-h-full"
-      style={{ fontFamily: "var(--font-geist-pixel-square)" }}
-    >
-      {/* ========== MOBILE TOP NAV ========== */}
-      <header className="md:hidden shrink-0 border-b border-[#c0c0c0] bg-white">
-        <div className="flex items-baseline justify-between gap-3 px-4 pt-3 pb-2">
-          <h2
-            className="text-xl xs:text-2xl text-[#2a2a2a] leading-tight tracking-tight"
-            style={{
-              fontFamily: 'var(--font-geist-pixel-square)',
-              fontWeight: 700,
-            }}
-          >
-            Giovanni Cruz
-          </h2>
-          <p className="text-xs xs:text-sm text-[#888888] shrink-0">
-            {t.portfolio} &apos;{new Date().getFullYear().toString().slice(-2)}
-          </p>
-        </div>
-        <nav
-          className="grid px-2 pb-2"
-          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
-        >
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentPage(item.id)}
-              className={`text-[10px] xs:text-xs transition-colors py-1 cursor-pointer text-center ${
-                currentPage === item.id
-                  ? 'text-[#000000] font-bold underline'
-                  : 'text-[#000066] hover:text-[#0000cc]'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </header>
-
-      {/* ========== SIDEBAR (desktop) ========== */}
-      <aside className="hidden md:flex md:w-48 shrink-0 flex-col md:pt-8 md:px-5 border-r border-[#c0c0c0] bg-white">
-        {/* Logo/Name */}
-        <div className="md:mb-10">
-          <h2
-            className="md:text-3xl text-[#2a2a2a] leading-tight tracking-tight"
-            style={{
-              fontFamily: 'var(--font-geist-pixel-square)',
-              fontWeight: 700,
-            }}
-          >
-            Giovanni
-            <br />
-            Cruz
-          </h2>
-          <p className="md:text-base text-[#888888] md:mt-2">
-            {t.portfolio} &apos;{new Date().getFullYear().toString().slice(-2)}
-          </p>
-        </div>
-
-        {/* Nav Links */}
-        <nav className="flex flex-col md:gap-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentPage(item.id)}
-              className={`text-left md:text-lg transition-colors flex items-center md:gap-2 md:py-1 cursor-pointer ${
-                currentPage === item.id ? 'text-[#000000] font-bold' : 'text-[#000066] hover:text-[#0000cc]'
-              }`}
-            >
-              {currentPage === item.id && <span className="text-[#000066] md:text-base">○</span>}
-              <span className={currentPage === item.id ? 'underline' : ''}>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* ========== MAIN CONTENT ========== */}
-      <main
-        className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 md:px-8 py-4 sm:py-6 md:py-8 bg-white"
-        onWheel={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
-        style={{
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain',
-        }}
+    <div className="flex h-full flex-col bg-white md:flex-row" onKeyDown={onKeyDown}>
+      {/* Files: a sidebar like a text editor's, a strip on phones */}
+      <nav
+        aria-label={t.files}
+        className="shrink-0 border-b border-black bg-[#eeeeee] md:w-[168px] md:border-b-0 md:border-r"
       >
-        {/* ========== HOME PAGE ========== */}
-        {currentPage === 'home' && (
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl md:text-6xl text-[#2a2a2a] mb-2 sm:mb-3"
-              style={{
-                fontFamily: 'var(--font-geist-pixel-square)',
-                fontWeight: 700,
-              }}
-            >
-              {t.welcome}
-            </h1>
-            <p
-              className="text-base sm:text-lg md:text-2xl text-[#2a2a2a] italic mb-4 sm:mb-6"
-              style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
-            >
-              {t.intro(hero.name)}
-            </p>
+        <p
+          className="hidden px-3 pb-1.5 pt-3 text-[10px] uppercase tracking-[0.08em] text-[#777777] md:block"
+          style={{ fontFamily: MONO }}
+        >
+          {t.files}
+        </p>
+        <div
+          role="tablist"
+          className="flex gap-px overflow-x-auto p-1.5 [scrollbar-width:none] md:flex-col md:overflow-visible md:pt-0"
+        >
+          {docs.map((doc) => {
+            const selected = doc.id === active.id
+            return (
+              <button
+                key={doc.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveId(doc.id)}
+                className={`flex shrink-0 cursor-pointer items-center gap-1.5 px-2 py-[5px] text-left text-[11px] leading-none whitespace-nowrap md:w-full ${
+                  selected ? 'bg-[#000080] text-white' : 'text-black hover:bg-[#dddddd]'
+                }`}
+                style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
+              >
+                <DocumentIcon />
+                <span className="truncate">{doc.name}</span>
+                {doc.current !== doc.saved && (
+                  <span className="ml-auto pl-1" title={t.edited} aria-label={t.edited}>
+                    •
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </nav>
 
-            {/* Photo */}
-            <div className="float-right ml-3 sm:ml-6 mb-3 sm:mb-4">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-40 md:h-40 border-2 border-[#cccccc] p-1 bg-[#f5f5f5]">
-                <Image
-                  src={art}
-                  alt="Giovanni Cruz"
-                  width={160}
-                  height={160}
-                  // ReadMe opens on boot, so this is the largest thing on screen (LCP)
-                  loading="eager"
-                  className="w-full h-full object-cover grayscale-[20%]"
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <p className="shrink-0 border-b border-[#e0d890] bg-[#fffef0] px-3 py-1.5 text-[11px] italic text-[#666655] md:hidden">
+          {t.mobileTip}
+        </p>
+
+        {/* The document: a centered column with room around it */}
+        <main
+          className={`min-h-0 flex-1 overflow-y-auto ${styles.document}`}
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+        >
+          <div
+            role="tabpanel"
+            aria-label={active.name}
+            className="mx-auto w-full max-w-[580px] px-6 pb-16 pt-10 md:px-10"
+            onClick={openLink}
+            onKeyDown={keepHandledEscape}
+          >
+            {formatted ? (
+              <FormattedDocument
+                key={`${active.id}:${active.revision}`}
+                name={active.name}
+                markdown={active.current}
+                figures={figures}
+                focus={focus}
+                editorRef={editorRef}
+                onEdit={edit}
+              />
+            ) : (
+              <>
+                {figures && (
+                  <p
+                    className="mb-[1.75em] select-none text-[13px] leading-[1.75] text-[#8a8a8a]"
+                    style={{ fontFamily: MONO }}
+                  >
+                    {figures.map((figure) => `![${figure.alt}](${figure.path})`).join(' ')}
+                  </p>
+                )}
+                <MarkdownDocument
+                  key={`${active.id}:${active.revision}`}
+                  name={active.name}
+                  markdown={active.current}
+                  onEdit={edit}
                 />
-              </div>
-            </div>
-
-            <p className="text-sm sm:text-base md:text-xl text-[#1a1a1a] leading-relaxed mb-4 sm:mb-6 text-justify">
-              {hero.description}
-            </p>
-
-            <p className="text-xs sm:text-sm md:text-lg text-[#333333] leading-relaxed mb-4 sm:mb-6 text-justify">
-              {hero.paragraph}
-            </p>
-
-            <p className="text-[10px] sm:text-xs md:text-sm text-[#555555] leading-relaxed mb-4 sm:mb-6">
-              <span className="italic">Cruztosh</span>: {t.cruztosh}
-            </p>
-
-            <div className="clear-both" />
-
-            {/* Mobile hint */}
-            <div className="md:hidden mt-6 p-3 bg-[#fffef0] border border-[#e0d890] text-center">
-              <p className="text-[11px] text-[#666655] leading-relaxed">
-                <span className="text-base">💻</span>
-                <br />
-                <span className="italic">{t.mobileTip}</span>
-              </p>
-            </div>
+              </>
+            )}
           </div>
-        )}
+        </main>
 
-        {/* ========== ABOUT PAGE ========== */}
-        {currentPage === 'about' && (
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl md:text-6xl text-[#2a2a2a] mb-4 sm:mb-6"
-              style={{
-                fontFamily: 'var(--font-geist-pixel-square)',
-                fontWeight: 700,
-              }}
-            >
-              {t.about}
-            </h1>
-
-            {/* Photo */}
-            <div className="float-left mr-3 sm:mr-6 mb-3 sm:mb-4">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-44 md:h-44 border-2 border-[#cccccc] p-1 bg-[#f5f5f5]">
-                <Image src={me} alt="Giovanni Cruz" width={176} height={176} className="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            <div className=" space-y-3 sm:space-y-4 text-xs sm:text-sm md:text-lg  leading-relaxed text-justify">
-              {aboutSection.paragraphs.map((p, i) => (
-                <p className="text-[#1a1a1a]" key={i}>
-                  {p}
-                </p>
-              ))}
-              <div className="text-[#1a1a1a]/60 italic">{aboutSection.signature}</div>
-            </div>
-
-            <div className="clear-both" />
-
-            {/* Stats */}
-            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-[#e0e0e0]">
-              <h2
-                className="text-lg sm:text-xl md:text-2xl font-bold text-[#2a2a2a] mb-3 sm:mb-4"
-                style={{ fontFamily: "var(--font-geist-pixel-square)" }}
-              >
-                {t.quickFacts}
-              </h2>
-              <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                {aboutSection.stats.map((stat, i) => (
-                  <div key={i} className="p-2 sm:p-3 md:p-4 bg-[#f8f8f8] border border-[#e0e0e0] ">
-                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-[#000066]">{stat.value}</span>
-                    <span className=" text-xs sm:text-sm md:text-base text-[#666666] ml-2">{stat.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========== SKILLS PAGE ========== */}
-        {currentPage === 'skills' && (
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl md:text-6xl text-[#2a2a2a] mb-4 sm:mb-6"
-              style={{
-                fontFamily: 'var(--font-geist-pixel-square)',
-                fontWeight: 700,
-              }}
-            >
-              {t.skills}
-            </h1>
-
-            <div className="space-y-6 sm:space-y-8">
-              {skillCategories.map((category) => (
-                <div key={category.title} className="pb-4 sm:pb-6 border-b border-[#e0e0e0] last:border-0">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded" style={{ backgroundColor: category.color }} />
-                    <h2
-                      className="text-lg sm:text-xl md:text-3xl font-bold text-[#2a2a2a]"
-                      style={{ fontFamily: "var(--font-geist-pixel-square)" }}
-                    >
-                      {category.title}
-                    </h2>
-                  </div>
-                  <p className="text-xs sm:text-sm md:text-lg text-[#666666] mb-3 sm:mb-4">{category.description}</p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {category.technologies.map((tech) => (
-                      <span
-                        key={tech}
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm md:text-base text-[#1a1a1a] bg-[#f0f0f0] border border-[#d0d0d0] hover:bg-[#e8e8e8] transition-colors"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ========== PROJECTS PAGE ========== */}
-        {currentPage === 'projects' && (
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl md:text-6xl text-[#2a2a2a] mb-4 sm:mb-6"
-              style={{
-                fontFamily: 'var(--font-geist-pixel-square)',
-                fontWeight: 700,
-              }}
-            >
-              {t.projects}
-            </h1>
-
-            <div className="space-y-4 sm:space-y-6">
-              {projects.map((project) => (
-                <div
-                  key={project.title}
-                  className="p-3 sm:p-4 md:p-5 bg-[#fafafa] border border-[#e0e0e0] hover:border-[#cccccc] hover:shadow-sm transition-all"
+        {/* Status bar */}
+        <div
+          className="flex shrink-0 items-center justify-between gap-3 px-3 py-1 text-[10px] text-[#555555]"
+          style={{
+            background: 'linear-gradient(180deg, #eeeeee 0%, #dddddd 100%)',
+            borderTop: '1px solid #888888',
+            fontFamily: MONO,
+          }}
+        >
+          <span className="truncate">
+            {active.name} · Markdown · {t.words(countWords(active.current))}
+          </span>
+          <div className="flex shrink-0">
+            {VIEWS.map((option, index) => {
+              const pressed = view === option
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={pressed}
+                  onClick={() => setView(option)}
+                  className="cursor-pointer px-2 py-px text-[10px] text-black"
+                  style={{
+                    marginLeft: index > 0 ? -1 : 0,
+                    border: '1px solid #000000',
+                    background: pressed ? '#bbbbbb' : 'linear-gradient(180deg, #ffffff 0%, #cccccc 100%)',
+                    boxShadow: pressed
+                      ? 'inset 1px 1px 0 #888888'
+                      : 'inset -1px -1px 0 #888888, inset 1px 1px 0 #ffffff',
+                  }}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 mb-2">
-                    <h2
-                      className="text-base sm:text-lg md:text-2xl font-bold text-[#2a2a2a]"
-                      style={{ fontFamily: "var(--font-geist-pixel-square)" }}
-                    >
-                      {project.title}
-                    </h2>
-                    <span className="text-xs sm:text-sm md:text-base text-[#888888] bg-[#f0f0f0] px-2 py-0.5 sm:py-1 w-fit shrink-0">
-                      {project.year}
-                    </span>
-                  </div>
-                  <p className="text-sm sm:text-base md:text-lg text-[#444444] mb-1 sm:mb-2">{project.category}</p>
-                  <p className="text-xs sm:text-sm md:text-base text-[#666666] mb-3 sm:mb-4 break-words">
-                    {project.tech}
-                  </p>
-                  <div className="flex flex-wrap gap-2 sm:gap-3">
-                    {project.repo && (
-                      <a
-                        href={project.repo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base text-[#333333] bg-[#ffffff] border border-[#333333] hover:bg-[#f5f5f5] transition-colors"
-                      >
-                        <Code size={14} className="sm:w-[18px] sm:h-[18px]" />
-                        <span className="hidden xs:inline">{t.source}</span>
-                        <span className="xs:hidden">{t.code}</span>
-                      </a>
-                    )}
-                    {project.demo && (
-                      <a
-                        href={project.demo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base text-[#333333] bg-[#ffffff] border border-[#333333] hover:bg-[#f5f5f5] transition-colors"
-                      >
-                        <ExternalLink size={14} className="sm:w-[18px] sm:h-[18px]" />
-                        {t.demo}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  {t.views[option]}
+                </button>
+              )
+            })}
           </div>
-        )}
-
-        {/* ========== CONTACT PAGE ========== */}
-        {currentPage === 'contact' && (
-          <div>
-            <h1
-              className="text-3xl sm:text-4xl md:text-6xl text-[#2a2a2a] mb-4 sm:mb-6"
-              style={{
-                fontFamily: 'var(--font-geist-pixel-square)',
-                fontWeight: 700,
-              }}
-            >
-              {t.contact}
-            </h1>
-
-            <p className="text-xs sm:text-sm md:text-lg text-[#444444] mb-6 sm:mb-8">{t.contactIntro}</p>
-
-            {/* Contact Info */}
-            <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-              <a
-                href={`mailto:${contactSection.email.value}`}
-                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-[#fafafa] border border-[#e0e0e0] hover:border-[#000066] hover:bg-[#f5f5ff] transition-all group"
-              >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-[#000066] text-white group-hover:bg-[#0000aa] transition-colors shrink-0">
-                  <Mail size={20} className="sm:w-6 sm:h-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm md:text-base text-[#666666]">{contactSection.email.label}</p>
-                  <p className="text-sm sm:text-base md:text-xl text-[#000066] font-bold break-all">
-                    {contactSection.email.value}
-                  </p>
-                </div>
-              </a>
-
-              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-[#fafafa] border border-[#e0e0e0]">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-[#666666] text-white shrink-0">
-                  <MapPin size={20} className="sm:w-6 sm:h-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm md:text-base text-[#666666]">{contactSection.location.label}</p>
-                  <p className="text-sm sm:text-base md:text-xl text-[#1a1a1a] font-bold">
-                    {contactSection.location.value}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Social Links */}
-            <div>
-              <h2
-                className="text-base sm:text-xl md:text-2xl font-bold text-[#2a2a2a] mb-3 sm:mb-4"
-                style={{ fontFamily: "var(--font-geist-pixel-square)" }}
-              >
-                {t.findMe}
-              </h2>
-              <div className="flex flex-wrap gap-2 sm:gap-4">
-                <a
-                  href={siteConfig.socials.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sm:py-3 text-sm text-gray-700 md:text-lg border border-gray-50000 bg-gray-200 hover:bg-gray-300 transition-colors"
-                >
-                  <Github size={18} className="sm:w-6 sm:h-6" />
-                  GitHub
-                </a>
-                <a
-                  href={siteConfig.socials.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 sm:py-3 text-sm text-gray-700 md:text-lg border border-gray-50000 bg-[#0077b5]/70 hover:bg-[#005c8f]/50 transition-colors"
-                >
-                  <Linkedin size={18} className="sm:w-6 sm:h-6" />
-                  LinkedIn
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <footer className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-[#e0e0e0] text-center text-xs sm:text-sm md:text-base text-[#888888]">
-          © {new Date().getFullYear()} Giovanni Cruz
-        </footer>
-      </main>
+        </div>
+      </div>
     </div>
   )
 }

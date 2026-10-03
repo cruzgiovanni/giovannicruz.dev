@@ -1,0 +1,128 @@
+/*
+ * The uiarc rich text editor, dressed in CruzTosh's Platinum look.
+ *
+ * Its tokens are set here, on the document, rather than by importing uiarc's foundation.css: that file defines
+ * them on :root, under the same names as the site's (--background, --foreground, --border…), and would repaint
+ * the whole page. The editor's own styles aren't in a cascade layer, so the overrides below win on specificity.
+ */
+.document {
+  --foreground: #1a1a1a;
+  --text-secondary: #555555;
+  --text-muted: #8a8a8a;
+  --accent: #000080;
+  --accent-strong: #000066;
+  --accent-subtle: rgb(0 0 128 / 0.12);
+  --accent-foreground: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-muted: #eeeeee;
+  --border: #000000;
+  --border-subtle: #cccccc;
+  --border-strong: #888888;
+  --shadow-floating: 2px 2px 0 rgb(0 0 0 / 0.3);
+  --font-body: var(--font-geist-mono), ui-monospace, monospace;
+  --tracking-body: 0;
+  --text-xs: 0.6875rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.8125rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.75rem;
+  --duration-instant: 120ms;
+  --duration-fast: 160ms;
+  --duration-standard: 240ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Room to breathe: a taller line and more space between blocks than the editor's defaults */
+.document [role='textbox'] {
+  line-height: 1.75;
+}
+
+.document [role='textbox'] > * + * {
+  margin-top: 0.85em;
+}
+
+.document [role='textbox'] > :is(h1, h2, h3) {
+  margin-top: 1.6em;
+}
+
+.document [role='textbox'] > :is(h1, h2, h3):first-child {
+  margin-top: 0;
+}
+
+.document [role='textbox'] > :is(h1, h2, h3) + * {
+  margin-top: 0.6em;
+}
+
+/*
+ * Headings in the system's pixel face, like the rest of the computer's chrome. Kept below bold (600): the browser
+ * decides whether Bold adds or removes the mark from the computed weight, so heavier headings would read as bold already.
+ */
+.document [role='textbox'] :is(h1, h2, h3) {
+  color: #000000;
+  font-family: var(--font-geist-pixel-square), monospace;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/*
+ * Focus mode: the block holding the caret stays, everything else fades back. While it's on, readme-content.tsx marks
+ * the document (data-focusing) and the block in focus (data-focus: a top-level block, plus the item when it's a list).
+ */
+.figures,
+.document [role='textbox'] > *,
+.document [role='textbox'] > :is(ul, ol) > li {
+  transition: opacity 0.2s ease;
+}
+
+.document [data-focusing] .figures,
+.document [data-focusing] [role='textbox'] > :not([data-focus]),
+.document [data-focusing] [role='textbox'] > [data-focus] > li:not([data-focus]) {
+  opacity: 0.28;
+}
+
+/* Links open on click (see readme-content.tsx), so they read as links */
+.document [role='textbox'] a {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+  cursor: pointer;
+}
+
+/* Square corners and hairlines instead of soft, rounded surfaces */
+.document [role='textbox'] code {
+  border: 1px solid #d0d0d0;
+  border-radius: 0;
+  background: #f0f0f0;
+  font-family: inherit;
+}
+
+.document [role='textbox'] pre {
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: #f5f5f5;
+  font-family: inherit;
+}
+
+.document [role='textbox'] hr {
+  background: #cccccc;
+}
+
+.document [role='toolbar'],
+.document [role='toolbar'] button,
+.document div:has(> div > [role='listbox']),
+.document [role='listbox'] > li {
+  border-radius: 0;
+}
+
+/* The block menu highlights like a Mac OS menu: navy, white text */
+.document [role='listbox'] > li[aria-hidden='true'] {
+  background: var(--accent);
+}
+
+.document [role='option'][aria-selected='true'] {
+  color: #ffffff;
+}
+
+.document [role='option'][aria-selected='true'] kbd {
+  color: rgb(255 255 255 / 0.7);
+}
