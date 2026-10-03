@@ -4,22 +4,69 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { Mail, MapPin, ExternalLink, Code } from 'lucide-react'
 import { Github, Linkedin } from '@/components/ui/brand-icons'
-import { skillCategories, aboutSection, projects, hero, contactSection } from '@/data/info'
+import { useLocale } from '@/components/locale-provider'
+import { getInfo, SHOW_PROJECTS } from '@/data/info'
 import { siteConfig } from '@/data/config'
 import art from '../../../../public/art.jpeg'
 import me from '../../../../public/me.jpeg'
 
 type Page = 'home' | 'about' | 'skills' | 'projects' | 'contact'
 
+const copy = {
+  en: {
+    nav: { home: 'HOME', about: 'ABOUT', skills: 'SKILLS', projects: 'PROJECTS', contact: 'CONTACT' },
+    portfolio: 'Portfolio',
+    welcome: 'Welcome',
+    intro: (name: string) => `I'm ${name}`,
+    cruztosh:
+      'a portfolio disguised as a machine. Inspired by Mac OS 9, 1999. With my own touch. Navigate the menus. Open the windows. Explore.',
+    mobileTip: 'Tip: Visit on a computer for the full retro Macintosh (Cruztosh) experience!',
+    about: 'About Me',
+    quickFacts: 'Quick Facts',
+    skills: 'Skills',
+    projects: 'Projects',
+    source: 'Source',
+    code: 'Code',
+    demo: 'Demo',
+    contact: 'Contact',
+    contactIntro: "Feel free to reach out! I'm always open to discussing new projects, creative ideas, or opportunities.",
+    findMe: 'Find me on',
+  },
+  pt: {
+    // "Habilidades" doesn't fit the five-column nav on phones
+    nav: { home: 'INÍCIO', about: 'SOBRE', skills: 'STACK', projects: 'PROJETOS', contact: 'CONTATO' },
+    portfolio: 'Portfólio',
+    welcome: 'Bem-vindo',
+    intro: (name: string) => `Sou o ${name}`,
+    cruztosh:
+      'um portfólio disfarçado de máquina. Inspirado no Mac OS 9, de 1999. Com o meu toque. Navegue pelos menus. Abra as janelas. Explore.',
+    mobileTip: 'Dica: acesse pelo computador para a experiência completa do Macintosh retrô (Cruztosh)!',
+    about: 'Sobre Mim',
+    quickFacts: 'Fatos Rápidos',
+    skills: 'Stack',
+    projects: 'Projetos',
+    source: 'Código',
+    code: 'Código',
+    demo: 'Demo',
+    contact: 'Contato',
+    contactIntro:
+      'Fique à vontade para entrar em contato! Estou sempre aberto a conversar sobre novos projetos, ideias criativas ou oportunidades.',
+    findMe: 'Me encontre em',
+  },
+}
+
 export function ReadmeContent() {
+  const locale = useLocale()
+  const t = copy[locale]
+  const { skillCategories, aboutSection, projects, hero, contactSection } = getInfo(locale)
   const [currentPage, setCurrentPage] = useState<Page>('home')
 
   const navItems: { id: Page; label: string }[] = [
-    { id: 'home', label: 'HOME' },
-    { id: 'about', label: 'ABOUT' },
-    { id: 'skills', label: 'SKILLS' },
-    { id: 'projects', label: 'PROJECTS' },
-    { id: 'contact', label: 'CONTACT' },
+    { id: 'home', label: t.nav.home },
+    { id: 'about', label: t.nav.about },
+    { id: 'skills', label: t.nav.skills },
+    ...(SHOW_PROJECTS ? [{ id: 'projects' as const, label: t.nav.projects }] : []),
+    { id: 'contact', label: t.nav.contact },
   ]
 
   return (
@@ -40,10 +87,13 @@ export function ReadmeContent() {
             Giovanni Cruz
           </h2>
           <p className="text-xs xs:text-sm text-[#888888] shrink-0">
-            Portfolio &apos;{new Date().getFullYear().toString().slice(-2)}
+            {t.portfolio} &apos;{new Date().getFullYear().toString().slice(-2)}
           </p>
         </div>
-        <nav className="grid grid-cols-5 px-2 pb-2">
+        <nav
+          className="grid px-2 pb-2"
+          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+        >
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -76,7 +126,7 @@ export function ReadmeContent() {
             Cruz
           </h2>
           <p className="md:text-base text-[#888888] md:mt-2">
-            Portfolio &apos;{new Date().getFullYear().toString().slice(-2)}
+            {t.portfolio} &apos;{new Date().getFullYear().toString().slice(-2)}
           </p>
         </div>
 
@@ -117,13 +167,13 @@ export function ReadmeContent() {
                 fontWeight: 700,
               }}
             >
-              Welcome
+              {t.welcome}
             </h1>
             <p
               className="text-base sm:text-lg md:text-2xl text-[#2a2a2a] italic mb-4 sm:mb-6"
               style={{ fontFamily: 'var(--font-geist-pixel-square)' }}
             >
-              I&apos;m {hero.name}
+              {t.intro(hero.name)}
             </p>
 
             {/* Photo */}
@@ -134,6 +184,8 @@ export function ReadmeContent() {
                   alt="Giovanni Cruz"
                   width={160}
                   height={160}
+                  // ReadMe opens on boot, so this is the largest thing on screen (LCP)
+                  loading="eager"
                   className="w-full h-full object-cover grayscale-[20%]"
                 />
               </div>
@@ -148,8 +200,7 @@ export function ReadmeContent() {
             </p>
 
             <p className="text-[10px] sm:text-xs md:text-sm text-[#555555] leading-relaxed mb-4 sm:mb-6">
-              <span className="italic">Cruztosh</span>: a portfolio disguised as a machine. Inspired by Mac OS 9, 1999.
-              With my own touch. Navigate the menus. Open the windows. Explore.
+              <span className="italic">Cruztosh</span>: {t.cruztosh}
             </p>
 
             <div className="clear-both" />
@@ -159,9 +210,7 @@ export function ReadmeContent() {
               <p className="text-[11px] text-[#666655] leading-relaxed">
                 <span className="text-base">💻</span>
                 <br />
-                <span className="italic">
-                  Tip: Visit on a computer for the full retro Macintosh (Cruztosh) experience!
-                </span>
+                <span className="italic">{t.mobileTip}</span>
               </p>
             </div>
           </div>
@@ -177,7 +226,7 @@ export function ReadmeContent() {
                 fontWeight: 700,
               }}
             >
-              About Me
+              {t.about}
             </h1>
 
             {/* Photo */}
@@ -204,7 +253,7 @@ export function ReadmeContent() {
                 className="text-lg sm:text-xl md:text-2xl font-bold text-[#2a2a2a] mb-3 sm:mb-4"
                 style={{ fontFamily: "var(--font-geist-pixel-square)" }}
               >
-                Quick Facts
+                {t.quickFacts}
               </h2>
               <div className="space-y-2 sm:space-y-3 md:space-y-4">
                 {aboutSection.stats.map((stat, i) => (
@@ -228,7 +277,7 @@ export function ReadmeContent() {
                 fontWeight: 700,
               }}
             >
-              Skills
+              {t.skills}
             </h1>
 
             <div className="space-y-6 sm:space-y-8">
@@ -270,7 +319,7 @@ export function ReadmeContent() {
                 fontWeight: 700,
               }}
             >
-              Projects
+              {t.projects}
             </h1>
 
             <div className="space-y-4 sm:space-y-6">
@@ -303,8 +352,8 @@ export function ReadmeContent() {
                         className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base text-[#333333] bg-[#ffffff] border border-[#333333] hover:bg-[#f5f5f5] transition-colors"
                       >
                         <Code size={14} className="sm:w-[18px] sm:h-[18px]" />
-                        <span className="hidden xs:inline">Source</span>
-                        <span className="xs:hidden">Code</span>
+                        <span className="hidden xs:inline">{t.source}</span>
+                        <span className="xs:hidden">{t.code}</span>
                       </a>
                     )}
                     {project.demo && (
@@ -315,7 +364,7 @@ export function ReadmeContent() {
                         className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm md:text-base text-[#333333] bg-[#ffffff] border border-[#333333] hover:bg-[#f5f5f5] transition-colors"
                       >
                         <ExternalLink size={14} className="sm:w-[18px] sm:h-[18px]" />
-                        Demo
+                        {t.demo}
                       </a>
                     )}
                   </div>
@@ -335,12 +384,10 @@ export function ReadmeContent() {
                 fontWeight: 700,
               }}
             >
-              Contact
+              {t.contact}
             </h1>
 
-            <p className="text-xs sm:text-sm md:text-lg text-[#444444] mb-6 sm:mb-8">
-              Feel free to reach out! I&apos;m always open to discussing new projects, creative ideas, or opportunities.
-            </p>
+            <p className="text-xs sm:text-sm md:text-lg text-[#444444] mb-6 sm:mb-8">{t.contactIntro}</p>
 
             {/* Contact Info */}
             <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
@@ -378,7 +425,7 @@ export function ReadmeContent() {
                 className="text-base sm:text-xl md:text-2xl font-bold text-[#2a2a2a] mb-3 sm:mb-4"
                 style={{ fontFamily: "var(--font-geist-pixel-square)" }}
               >
-                Find me on
+                {t.findMe}
               </h2>
               <div className="flex flex-wrap gap-2 sm:gap-4">
                 <a

@@ -1,70 +1,93 @@
+import { localize, type Locale, type Localized, type Text } from '@/lib/i18n'
 import { siteConfig } from './config'
 
-export const hero = {
-  badge: 'Software Engineer',
+const hero = {
   name: 'Giovanni Cruz',
-  intro: 'Writing code that reads like prose and performs like a machine. Precise. Intentional. Uncluttered.',
-  description: 'I design systems with a strong sense of structure and restraint.',
-  paragraph: 'Less noise. More intention.',
+  badge: { en: 'Software Engineer', pt: 'Engenheiro de Software' },
+  description: {
+    en: 'I design systems with a strong sense of structure and restraint.',
+    pt: 'Projeto sistemas com um forte senso de estrutura e contenção.',
+  },
+  paragraph: { en: 'Less noise. More intention.', pt: 'Menos ruído. Mais intenção.' },
 }
 
-export const projects = [
+// Projects stay hidden (ReadMe section and Terminal commands) until there's work worth showing.
+// Set to true to bring them back.
+export const SHOW_PROJECTS = false
+
+interface Project {
+  number: string
+  title: Text
+  category: Localized<string>
+  year: string
+  tech: string
+  demo?: string
+  repo?: string
+  type: 'project' | 'experience'
+}
+
+const projects: Project[] = [
   {
     number: '01',
     title: 'giovannicruz.dev - landing page',
-    category: 'My own landing page about my work',
+    category: { en: 'My own landing page about my work', pt: 'Minha landing page sobre o meu trabalho' },
     year: '2026',
     tech: 'Next.js • TypeScript • Tailwind CSS • Framer Motion',
-    direction: 'right' as const,
     demo: 'https://giovannicruz.dev',
-    type: 'project' as const,
+    type: 'project',
   },
   {
     number: '02',
-    title: 'Piva Insurances',
-    category: 'Insurance Management Platform',
+    title: { en: 'Piva Insurances', pt: 'Piva Seguros' },
+    category: { en: 'Insurance Management Platform', pt: 'Plataforma de gestão de seguros' },
     year: '2026',
     tech: 'Vite • React • TypeScript • Shadcn UI • Pocketbase',
-    direction: 'left' as const,
     // repo: 'https://github.com/emiliobiasi/pivaseguros',
-    type: 'experience' as const,
+    type: 'experience',
   },
   {
     number: '03',
-    title: 'Solution Card',
-    category: 'Digital Health Platform',
+    title: { en: 'Solution Card', pt: 'Solução Card' },
+    category: { en: 'Digital Health Platform', pt: 'Plataforma digital de saúde' },
     year: '07/2025',
     tech: 'Next.js • Tailwind CSS • Framer Motion',
-    direction: 'right' as const,
     demo: 'https://solucaocard.com.br/',
-    type: 'project' as const,
+    type: 'project',
   },
   {
     number: '04',
-    title: 'Book SaaS',
-    category: 'SaaS with Auth & Subscriptions',
+    title: { en: 'Book SaaS', pt: 'Livro SaaS' },
+    category: { en: 'SaaS with Auth & Subscriptions', pt: 'SaaS com autenticação e assinaturas' },
     year: '02/2025',
     tech: 'Next.js • Prisma • Stripe • NextAuth',
-    direction: 'left' as const,
     repo: 'https://github.com/cruzgiovanni/livroSaas',
-    type: 'project' as const,
+    type: 'project',
   },
   {
     number: '05',
     title: 'Delivery FSW',
-    category: 'Real-time Delivery System',
+    category: { en: 'Real-time Delivery System', pt: 'Sistema de delivery em tempo real' },
     year: '02/2025',
     tech: 'Next.js • Prisma • NeonDB • Stripe',
-    direction: 'right' as const,
     repo: 'https://github.com/cruzgiovanni/fsw-delivery',
-    type: 'project' as const,
+    type: 'project',
   },
 ]
 
-export const skillCategories = [
+interface SkillCategory {
+  title: string
+  description: Localized<string>
+  technologies: Text[]
+  color: string
+}
+
+const skillCategories: SkillCategory[] = [
   {
     title: 'Backend',
-    description: 'Building scalable APIs and server-side systems',
+    description: {
+      en: 'Building scalable APIs and server-side systems',
+      pt: 'Construindo APIs escaláveis e sistemas no servidor',
+    },
     technologies: [
       'Java',
       'Spring',
@@ -72,61 +95,104 @@ export const skillCategories = [
       'Bun',
       'Node.js',
       'PostgreSQL',
-      'NoSQL Databases',
+      { en: 'NoSQL Databases', pt: 'Bancos NoSQL' },
       'ORMs',
-      'BaaS Platforms',
+      { en: 'BaaS Platforms', pt: 'Plataformas BaaS' },
     ],
     color: '#89b4fa',
-    direction: 'top' as const,
   },
   {
     title: 'DevOps',
-    description: 'Deploying and maintaining production systems',
+    description: {
+      en: 'Deploying and maintaining production systems',
+      pt: 'Publicando e mantendo sistemas em produção',
+    },
     technologies: ['Docker', 'Github Actions', 'AWS', 'Linux', 'Git'],
     color: '#f5c2e7',
-    direction: 'bottom' as const,
   },
   {
     title: 'Frontend',
-    description: 'Crafting intuitive interfaces and user experiences',
+    description: {
+      en: 'Crafting intuitive interfaces and user experiences',
+      pt: 'Criando interfaces intuitivas e boas experiências de uso',
+    },
     technologies: ['React', 'Next.js', 'Tailwind CSS', 'TypeScript'],
     color: '#94e2d5',
-    direction: 'right' as const,
   },
   {
     title: 'Blockchain',
-    description: 'Developing smart contracts and Web3 solutions',
+    description: {
+      en: 'Developing smart contracts and Web3 solutions',
+      pt: 'Desenvolvendo smart contracts e soluções Web3',
+    },
     technologies: ['Solidity', 'Hardhat', 'Ethereum'],
     color: '#fab387',
-    direction: 'left' as const,
   },
 ]
 
-export const aboutSection = {
-  label: 'About me',
-  paragraphs: [
-    'I’m a Software Engineer drawn to systems and aesthetics that age well. ',
-    'In code, that means structure, restraint, and clarity.',
-    'Outside of it, the same principles apply.',
-    'Software. Habits. Style.',
-  ],
-  signature: '// I code on faith and old blues from the 70s.',
-  stats: [
-    { value: `${new Date().getFullYear() - 2023}+`, label: 'in software development', accent: true },
-    { value: 'Catholic', label: 'by nature', accent: true },
-  ],
+const yearsInSoftware = `${new Date().getFullYear() - 2023}+`
+
+const aboutSection: Localized<{
+  paragraphs: string[]
+  signature: string
+  stats: { value: string; label: string; accent: boolean }[]
+}> = {
+  en: {
+    paragraphs: [
+      'I’m a Software Engineer drawn to systems and aesthetics that age well. ',
+      'In code, that means structure, restraint, and clarity.',
+      'Outside of it, the same principles apply.',
+      'Software. Habits. Style.',
+    ],
+    signature: '// I code on faith and old blues from the 70s.',
+    stats: [
+      { value: yearsInSoftware, label: 'in software development', accent: true },
+      { value: 'Catholic', label: 'by nature', accent: true },
+    ],
+  },
+  pt: {
+    paragraphs: [
+      'Sou um Engenheiro de Software atraído por sistemas e estéticas que envelhecem bem.',
+      'No código, isso significa estrutura, contenção e clareza.',
+      'Fora dele, os mesmos princípios valem.',
+      'Software. Hábitos. Estilo.',
+    ],
+    signature: '// Programo movido a fé e a blues antigo dos anos 70.',
+    stats: [
+      { value: yearsInSoftware, label: 'em desenvolvimento de software', accent: true },
+      { value: 'Católico', label: 'por natureza', accent: true },
+    ],
+  },
 }
 
-export const contactSection = {
-  title: "Let's talk",
-  subtitle: '/ Get in touch',
-  email: {
-    label: 'Email',
-    value: siteConfig.email,
-  },
-  location: {
-    label: 'Location',
-    value: siteConfig.location,
-  },
-  socials: ['LinkedIn', 'GitHub'],
+const contactLabels: Localized<{ email: string; location: string }> = {
+  en: { email: 'Email', location: 'Location' },
+  pt: { email: 'E-mail', location: 'Localização' },
+}
+
+/** The portfolio content, in the given language. */
+export function getInfo(locale: Locale) {
+  return {
+    hero: {
+      name: hero.name,
+      badge: hero.badge[locale],
+      description: hero.description[locale],
+      paragraph: hero.paragraph[locale],
+    },
+    projects: projects.map((project) => ({
+      ...project,
+      title: localize(project.title, locale),
+      category: project.category[locale],
+    })),
+    skillCategories: skillCategories.map((category) => ({
+      ...category,
+      description: category.description[locale],
+      technologies: category.technologies.map((technology) => localize(technology, locale)),
+    })),
+    aboutSection: aboutSection[locale],
+    contactSection: {
+      email: { label: contactLabels[locale].email, value: siteConfig.email },
+      location: { label: contactLabels[locale].location, value: siteConfig.location[locale] },
+    },
+  }
 }

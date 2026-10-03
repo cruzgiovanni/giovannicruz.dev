@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { heroContent } from '@/data/lp-info'
+import { useLocale } from '@/components/locale-provider'
 
 const sceneHeight = 'flex-1 min-h-[45svh] md:flex-none md:h-[65vh]'
 
@@ -17,9 +18,8 @@ const ComputerSceneCanvas = dynamic(
   { ssr: false },
 )
 
-const { greeting, role } = heroContent
-
 export function Hero() {
+  const { greeting, role } = heroContent[useLocale()]
   const [sceneReady, setSceneReady] = useState(false)
 
   const onSceneReady = useCallback(() => setSceneReady(true), [])

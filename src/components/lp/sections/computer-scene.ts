@@ -8,8 +8,21 @@ import {
   getScreenFrame,
   type ScreenFrame,
 } from './computer-screen'
+import type { Locale } from '@/lib/i18n'
 
-export function initScene(container: HTMLDivElement, onReady?: () => void, onScreenClick?: () => void): () => void {
+const TOOLTIPS = {
+  en: { enter: 'Click to enter', zoom: 'Click to zoom', exit: 'Click to exit' },
+  pt: { enter: 'Clique para entrar', zoom: 'Clique para ampliar', exit: 'Clique para sair' },
+}
+
+export function initScene(
+  container: HTMLDivElement,
+  locale: Locale,
+  onReady?: () => void,
+  onScreenClick?: () => void,
+): () => void {
+  const tooltips = TOOLTIPS[locale]
+
   // Scene setup
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0xc8c4c0)
@@ -518,7 +531,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
 
   // Tooltip
   const tooltip = document.createElement('div')
-  tooltip.textContent = isMobile ? '' : 'Click'
+  tooltip.textContent = isMobile ? '' : tooltips.enter
   Object.assign(tooltip.style, {
     position: 'absolute',
     pointerEvents: 'none',
@@ -581,7 +594,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     if (monitorIntersects.length > 0) {
       if (!isHoveringMonitor) {
         isHoveringMonitor = true
-        tooltip.textContent = 'Click to enter'
+        tooltip.textContent = tooltips.enter
         tooltip.style.opacity = '1'
         renderer.domElement.style.cursor = 'pointer'
       }
@@ -599,7 +612,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
       if (crucifixIntersects.length > 0 && !isHoveringMonitor) {
         if (!isHoveringCrucifix) {
           isHoveringCrucifix = true
-          tooltip.textContent = 'Click to zoom'
+          tooltip.textContent = tooltips.zoom
           tooltip.style.opacity = '1'
           renderer.domElement.style.cursor = 'pointer'
         }
@@ -846,7 +859,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
       return
     }
     const rect = container.getBoundingClientRect()
-    tooltip.textContent = 'Click to exit'
+    tooltip.textContent = tooltips.exit
     tooltip.style.opacity = '1'
     tooltip.style.left = `${e.clientX - rect.left}px`
     tooltip.style.top = `${e.clientY - rect.top}px`
@@ -881,7 +894,9 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
   // Animation loop
   // ============================
   let animFrameId: number
-  const clock = new THREE.Clock()
+  const timer = new THREE.Timer()
+  // Pauses while the tab is hidden, so coming back doesn't fast-forward an animation
+  timer.connect(document)
   let firstFrame = true
   let pendingResize = false
   let lastW = container.clientWidth
@@ -907,7 +922,8 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
 
   function animate() {
     animFrameId = requestAnimationFrame(animate)
-    const dt = clock.getDelta()
+    timer.update()
+    const dt = timer.getDelta()
 
     if (pendingResize) {
       pendingResize = false
@@ -966,6 +982,7 @@ export function initScene(container: HTMLDivElement, onReady?: () => void, onScr
     disposed = true
     cancelAnimationFrame(animFrameId)
     resizeObserver.disconnect()
+    timer.dispose()
 
     renderer.domElement.removeEventListener('mousemove', onMouseMove)
     renderer.domElement.removeEventListener('mousedown', onMouseDown)

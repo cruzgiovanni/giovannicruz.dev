@@ -1,26 +1,12 @@
-const message = 'Olá, tudo bem? Tenho um projeto em mente e queria conversar com você.'
-const encodedMessage = encodeURIComponent(message)
-const link = `https://wa.me/5519996391410?text=${encodedMessage}`
+import type { Localized } from '@/lib/i18n'
 
-export const contactContent = {
-  whatsapp: link,
-}
-
-export const navbarContent = {
-  logo: {
-    alt: 'Giovanni Cruz',
-    text: 'giovannicruz.dev',
-    href: '/',
+export const heroContent: Localized<{ greeting: string; role: string }> = {
+  en: {
+    greeting: "Hi, I'm Giovanni Cruz.",
+    role: 'Software developer.',
   },
-  navLinks: [{ label: 'Contato', href: contactContent.whatsapp }],
-  menuLinks: [
-    { label: 'Home', href: '/' },
-    { label: 'Contato', href: contactContent.whatsapp },
-  ],
-  socialLinks: [{ label: 'Instagram', href: 'https://www.instagram.com/giovannicruz.dev' }],
-}
-
-export const heroContent = {
-  greeting: 'Oi, sou o Giovanni Cruz.',
-  role: 'Desenvolvedor de software.',
+  pt: {
+    greeting: 'Oi, sou o Giovanni Cruz.',
+    role: 'Desenvolvedor de software.',
+  },
 }

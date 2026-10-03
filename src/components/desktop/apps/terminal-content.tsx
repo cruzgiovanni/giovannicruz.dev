@@ -1,10 +1,80 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { hero, aboutSection, skillCategories, projects } from '@/data/info'
+import { useLocale } from '@/components/locale-provider'
+import { getInfo, SHOW_PROJECTS } from '@/data/info'
 import { siteConfig } from '@/data/config'
 
 const CONTACT_COMMAND = 'contact'
+
+// Commands stay in English, like a real shell; what they print follows the visitor's language
+const copy = {
+  en: {
+    available: 'Available commands:',
+    commands: {
+      help: 'Show this help message',
+      about: 'About me',
+      skills: 'List my skills',
+      projects: 'Show my projects',
+      contact: 'Contact information',
+      clear: 'Clear terminal',
+      whoami: 'Who am I?',
+      date: 'Show current date',
+      echo: 'Echo a message',
+      love: 'Displays the love of Giovanni’s life.',
+    },
+    projects: 'Professional Experience & Projects:',
+    projectHint: "Type 'project <number>' for details (e.g., 'project 01')",
+    period: 'Period',
+    tech: 'Tech',
+    type: 'Type',
+    experience: 'Professional Experience',
+    personal: 'Personal Project',
+    projectNotFound: (num: string) => `Project '${num}' not found. Type 'projects' to see available projects.`,
+    commandNotFound: (command: string) => `command not found: ${command}. Type 'help' for available commands.`,
+    date: () => new Date().toString(),
+    email: 'Email',
+    location: 'Location',
+    welcome: "Type 'help' for available commands.",
+  },
+  pt: {
+    available: 'Comandos disponíveis:',
+    commands: {
+      help: 'Mostra esta ajuda',
+      about: 'Sobre mim',
+      skills: 'Lista minhas habilidades',
+      projects: 'Mostra meus projetos',
+      contact: 'Informações de contato',
+      clear: 'Limpa o terminal',
+      whoami: 'Quem sou eu?',
+      date: 'Mostra a data atual',
+      echo: 'Repete uma mensagem',
+      love: 'Mostra o amor da vida do Giovanni.',
+    },
+    projects: 'Experiência profissional e projetos:',
+    projectHint: "Digite 'project <número>' para ver os detalhes (ex.: 'project 01')",
+    period: 'Período',
+    tech: 'Tecnologias',
+    type: 'Tipo',
+    experience: 'Experiência profissional',
+    personal: 'Projeto pessoal',
+    projectNotFound: (num: string) =>
+      `Projeto '${num}' não encontrado. Digite 'projects' para ver os projetos disponíveis.`,
+    commandNotFound: (command: string) =>
+      `comando não encontrado: ${command}. Digite 'help' para ver os comandos disponíveis.`,
+    date: () => new Date().toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'long' }),
+    email: 'E-mail',
+    location: 'Localização',
+    welcome: "Digite 'help' para ver os comandos disponíveis.",
+  },
+}
+
+function helpText({ available, commands }: (typeof copy)['en' | 'pt']) {
+  const lines = Object.entries(commands)
+    .filter(([name]) => SHOW_PROJECTS || name !== 'projects')
+    .map(([name, description]) => `  ${name.padEnd(8)} - ${description}`)
+  return `${available}\n${lines.join('\n')}\n`
+}
 
 const JESUS_ASCII = `
 ⢦⣷⣾⣶⣷⣾⣶⣧⣮⣴⣥⣾⣤⣷⣬⣶⣵⣮⣶⣥⣾⣤⣧⣼⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣼⣶⣵⣮⣶⣵⣮⣶⣷⣾⣶⣷⣼⣤⣧⣼⣴⣧⣼⣶⡡
@@ -61,6 +131,9 @@ interface HistoryEntry {
 }
 
 export function TerminalContent() {
+  const locale = useLocale()
+  const t = copy[locale]
+  const { hero, aboutSection, skillCategories, projects } = getInfo(locale)
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [currentInput, setCurrentInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -83,18 +156,7 @@ export function TerminalContent() {
 
     switch (cmd) {
       case 'help':
-        output = `Available commands:
-  help     - Show this help message
-  about    - About me
-  skills   - List my skills
-  projects - Show my projects
-  contact  - Contact information
-  clear    - Clear terminal
-  whoami   - Who am I?
-  date     - Show current date
-  echo     - Echo a message
-  love     - Displays the love of Giovanni’s life.
-`
+        output = helpText(t)
         break
 
       case 'about':
@@ -109,11 +171,15 @@ ${aboutSection.paragraphs.join('\n\n')}`
         break
 
       case 'projects':
-        output = `Professional Experience & Projects:
+        if (!SHOW_PROJECTS) {
+          output = t.commandNotFound(command)
+          break
+        }
+        output = `${t.projects}
 
 ${projects.map((p) => `[${p.number}] ${p.title} - ${p.category} (${p.year})`).join('\n')}
 
-Type 'project <number>' for details (e.g., 'project 01')`
+${t.projectHint}`
         break
 
       case CONTACT_COMMAND:
@@ -131,7 +197,7 @@ Type 'project <number>' for details (e.g., 'project 01')`
         break
 
       case 'date':
-        output = new Date().toString()
+        output = t.date()
         break
 
       case 'jesus':
@@ -148,22 +214,22 @@ Type 'project <number>' for details (e.g., 'project 01')`
       default:
         if (cmd.startsWith('echo ')) {
           output = command.slice(5)
-        } else if (cmd.startsWith('project ')) {
+        } else if (SHOW_PROJECTS && cmd.startsWith('project ')) {
           const num = cmd.slice(8).trim()
           const project = projects.find((p) => p.number === num)
           if (project) {
             const link = project.repo || project.demo || ''
             output = `${project.title}
 ${project.category}
-Period: ${project.year}
-Tech: ${project.tech}
-Type: ${project.type === 'experience' ? 'Professional Experience' : 'Personal Project'}
+${t.period}: ${project.year}
+${t.tech}: ${project.tech}
+${t.type}: ${project.type === 'experience' ? t.experience : t.personal}
 ${link ? `Link: ${link}` : ''}`
           } else {
-            output = `Project '${num}' not found. Type 'projects' to see available projects.`
+            output = t.projectNotFound(num)
           }
         } else {
-          output = `command not found: ${command}. Type 'help' for available commands.`
+          output = t.commandNotFound(command)
         }
     }
 
@@ -185,7 +251,7 @@ ${link ? `Link: ${link}` : ''}`
   const renderContactOutput = () => (
     <div className="text-[#cccccc] mt-1 ml-0">
       <p>
-        Email:{' '}
+        {t.email}:{' '}
         <a
           href={`mailto:${siteConfig.email}`}
           className="text-[#00aaff] hover:underline"
@@ -194,7 +260,9 @@ ${link ? `Link: ${link}` : ''}`
           {siteConfig.email}
         </a>
       </p>
-      <p>Location: {siteConfig.location}</p>
+      <p>
+        {t.location}: {siteConfig.location[locale]}
+      </p>
       <p>
         GitHub:{' '}
         <a
@@ -237,7 +305,7 @@ ${link ? `Link: ${link}` : ''}`
       {/* Welcome message */}
       <div className="mb-4 text-[#888888]">
         <p>Cruz OS Terminal v1.0</p>
-        <p>Type &apos;help&apos; for available commands.</p>
+        <p>{t.welcome}</p>
         <p className="mt-2">---</p>
       </div>
 

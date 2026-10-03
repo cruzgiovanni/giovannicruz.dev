@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useLocale } from '@/components/locale-provider'
+
+const title = { en: 'Calculator', pt: 'Calculadora' }
 
 interface CalculatorWindowProps {
   isOpen: boolean
@@ -21,6 +24,7 @@ export function CalculatorWindow({
   onDrag,
   containerRef,
 }: CalculatorWindowProps) {
+  const locale = useLocale()
   const [display, setDisplay] = useState('0')
   const [previousValue, setPreviousValue] = useState<number | null>(null)
   const [operator, setOperator] = useState<string | null>(null)
@@ -279,7 +283,7 @@ export function CalculatorWindow({
                 fontFamily: 'var(--font-geist-mono), monospace',
               }}
             >
-              Calculator
+              {title[locale]}
             </span>
           </div>
 

@@ -1,32 +1,21 @@
 import Link from 'next/link'
-import { Navbar } from '@/components/lp/sections/navbar'
-import { contactContent } from '@/data/lp-info'
+import { getLocale } from '@/lib/locale'
 
-const notFoundNavLinks = [
-  { label: 'Home', href: '/' },
-  { label: 'Contato', href: contactContent.whatsapp },
-]
+const copy = {
+  en: { message: 'Page not found.', back: 'Back to home' },
+  pt: { message: 'Página não encontrada.', back: 'Voltar ao início' },
+}
 
-export default function NotFound() {
+// Same two-tone statement as the hero, on its own
+export default async function NotFound() {
+  const t = copy[await getLocale()]
+
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-background">
-      <Navbar navLinks={notFoundNavLinks} />
-
-      <div className="relative z-10 flex h-full flex-col items-end justify-end pb-16 pr-6 sm:pr-12">
-        <p className="text-[0.65rem] font-semibold text-muted-foreground tracking-widest uppercase mb-2">
-          Erro
-        </p>
-        <h1 className="text-[6rem] sm:text-[10rem] font-bold leading-none tracking-tighter text-foreground">
-          404
-        </h1>
-        <p className="text-sm text-muted-foreground mb-6 font-semibold">
-          Página não encontrada.
-        </p>
-        <Link
-          href="/"
-          className="text-[0.65rem] font-semibold text-foreground border border-border/60 px-4 py-2 hover:bg-secondary transition-colors tracking-widest uppercase"
-        >
-          Voltar ao início
+    <main className="flex h-[100svh] flex-col justify-end bg-background px-2 pb-6 md:px-4 md:pb-8">
+      <div className="font-sans text-[clamp(1.75rem,4vw,3.25rem)] font-medium leading-[1.05] tracking-[-0.03em]">
+        <h1 className="text-foreground">{t.message}</h1>
+        <Link href="/" className="block w-fit text-neutral-500 transition-colors hover:text-foreground">
+          {t.back}
         </Link>
       </div>
     </main>

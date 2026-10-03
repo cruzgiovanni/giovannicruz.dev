@@ -1,7 +1,36 @@
 'use client'
 
+import { useLocale } from '@/components/locale-provider'
+import { localeTags } from '@/lib/i18n'
+
+const copy = {
+  en: {
+    version: 'Version',
+    builtInMemory: 'Built-in Memory',
+    virtualMemory: 'Virtual Memory',
+    off: 'Off',
+    largestUnusedBlock: 'Largest Unused Block',
+    application: 'Application',
+    memory: 'Memory',
+  },
+  pt: {
+    version: 'Versão',
+    builtInMemory: 'Memória interna',
+    virtualMemory: 'Memória virtual',
+    off: 'Desligada',
+    largestUnusedBlock: 'Maior bloco livre',
+    application: 'Aplicativo',
+    memory: 'Memória',
+  },
+}
+
 export function AboutContent() {
+  const locale = useLocale()
+  const t = copy[locale]
   const currentYear = new Date().getFullYear()
+  // KB as MB with one decimal, in the language's number format
+  const megabytes = (kilobytes: number) =>
+    (kilobytes / 1024).toLocaleString(localeTags[locale], { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
   const totalMemory = 4096
   const systemUsage = 1420
@@ -52,26 +81,26 @@ export function AboutContent() {
         <table className="w-full text-[10px] md:text-[11px]" style={{ borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
-              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">Version:</td>
+              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">{t.version}:</td>
               <td className="py-0.5 text-black" colSpan={2}>
                 Cruz OS 9.0
               </td>
             </tr>
             <tr>
-              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">Built-in Memory:</td>
+              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">{t.builtInMemory}:</td>
               <td className="py-0.5 text-black" colSpan={2}>
                 4 MB
               </td>
             </tr>
             <tr>
-              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">Virtual Memory:</td>
+              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">{t.virtualMemory}:</td>
               <td className="py-0.5 text-black" colSpan={2}>
-                Off
+                {t.off}
               </td>
             </tr>
             <tr>
-              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">Largest Unused Block:</td>
-              <td className="py-0.5 text-black">{(largestUnused / 1024).toFixed(1)} MB</td>
+              <td className="pr-2 md:pr-3 py-0.5 text-black font-bold">{t.largestUnusedBlock}:</td>
+              <td className="py-0.5 text-black">{megabytes(largestUnused)} MB</td>
               <td className="py-0.5 text-[9px] md:text-[10px] text-[#666666] text-right">
                 ™ &amp; © Giovanni Cruz, {currentYear}
               </td>
@@ -97,8 +126,8 @@ export function AboutContent() {
             borderBottom: '1px solid #888888',
           }}
         >
-          <div className="flex-1">Application</div>
-          <div className="w-12.5 md:w-17.5 text-right">Memory</div>
+          <div className="flex-1">{t.application}</div>
+          <div className="w-12.5 md:w-17.5 text-right">{t.memory}</div>
           <div className="w-15 md:w-20"></div>
         </div>
 
@@ -115,7 +144,7 @@ export function AboutContent() {
             <span>Cruz OS</span>
           </div>
           <div className="w-17.5 md:w-17.5 text-right text-[9px] md:text-[10px]">
-            {(systemUsage / 1024).toFixed(1)} MB
+            {megabytes(systemUsage)} MB
           </div>
           <div className="w-15 md:w-20 pl-1 md:pl-2">
             <MemoryBar used={systemUsage} total={totalMemory} color="#888888" />
