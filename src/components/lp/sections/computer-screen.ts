@@ -147,6 +147,9 @@ export function createScreenLayer({ screensaverSrc, computerSrc }: { screensaver
     overflow: 'hidden',
     borderRadius: '6px',
     pointerEvents: 'none',
+    // After a click changes CruzTosh, the browser can fall back to the iframe element's own cursor:
+    // keep it neutral so the exit cursor around the screen doesn't leak onto the desktop
+    cursor: 'default',
   })
 
   const screensaver = document.createElement('video')
