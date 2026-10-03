@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ReadmeContent } from '@/components/desktop/apps/readme-content'
 import { TerminalContent } from '@/components/desktop/apps/terminal-content'
 import { MusicPlayerContent } from '@/components/desktop/apps/music-player-content'
@@ -17,6 +17,7 @@ import terminalIcon from '../../../public/mac-icons/terminal.png'
 import musicPlayerIcon from '../../../public/mac-icons/music-player.png'
 import pongIcon from '../../../public/mac-icons/ping-pong.png'
 import { useLocale } from '@/components/locale-provider'
+import { DesktopProvider, type AppChrome, type MenuEntry } from '@/components/desktop/app-chrome'
 
 const copy = {
   en: {
@@ -464,32 +465,96 @@ function MacDesktopIcon({
   )
 }
 
-// Mac OS 9 Menu Bar
+// A menu pulled down from the menu bar, Platinum style
+function MenuDropdown({ items, onClose, style }: { items: MenuEntry[]; onClose: () => void; style: React.CSSProperties }) {
+  return (
+    <div
+      role="menu"
+      className="absolute left-0 top-full w-[220px] py-[2px]"
+      style={{
+        zIndex: 10002,
+        background: '#ffffff',
+        border: '1px solid #000000',
+        boxShadow: '2px 2px 0 rgba(0,0,0,0.3)',
+      }}
+    >
+      {items.map((item, index) =>
+        item === 'separator' ? (
+          <div key={index} className="mx-[4px] my-[3px] border-t border-[#888888]" />
+        ) : (
+          <div
+            key={index}
+            role="menuitem"
+            aria-disabled={item.disabled || undefined}
+            // Keeps focus and the text selection where they were, so commands apply to them
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              if (item.disabled) return
+              onClose()
+              item.onSelect()
+            }}
+            className={`flex items-center gap-[6px] px-[8px] py-[3px] text-[11px] md:text-[12px] ${
+              item.disabled ? 'cursor-default text-[#999999]' : 'cursor-pointer text-black hover:bg-[#000080]/80 hover:text-white'
+            }`}
+            style={style}
+          >
+            <span className="w-[10px] shrink-0 text-center">{item.checked ? '✓' : ''}</span>
+            <span className="flex-1 whitespace-nowrap">{item.label}</span>
+            {item.shortcut && <span className="shrink-0 pl-[12px]">{item.shortcut}</span>}
+          </div>
+        ),
+      )}
+    </div>
+  )
+}
+
+// Mac OS 9 Menu Bar: the Apple menu, then the menus of the app in front (the Finder's when no app is)
 function MacMenuBar({
   currentTime,
   onAppleMenuClick,
   appleMenuOpen,
   onOpenWindow,
   onShutdown,
+  app,
 }: {
   currentTime: string
   onAppleMenuClick: () => void
   appleMenuOpen: boolean
   onOpenWindow: (id: string) => void
   onShutdown: () => void
+  app: AppChrome | null
 }) {
   const t = copy[useLocale()]
   const menuItems = t.menu
+  const [openMenu, setOpenMenu] = useState<number | null>(null)
+  const appMenus = app?.menus ?? null
+  const appMenuOpen = openMenu !== null && !!appMenus?.[openMenu]
 
-  // Pixelated font style for menu bar
-  const pixelFontStyle = {
-    fontFamily: '"Chicago", "Geneva", "Charcoal", monospace',
-    fontWeight: 700,
+  // Another app coming to the front closes whatever menu was open
+  useEffect(() => setOpenMenu(null), [app?.name])
+
+  // Esc closes the open menu, before it can reach the window underneath
+  useEffect(() => {
+    if (!appMenuOpen && !appleMenuOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setOpenMenu(null)
+      if (appleMenuOpen) onAppleMenuClick()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [appMenuOpen, appleMenuOpen, onAppleMenuClick])
+
+  // The site's sans, antialiased: the screen is scaled in the 3D scene, and bitmap-style aliased
+  // text broke up into noise there. Semibold in the bar, like Charcoal's weight; medium in the menus.
+  const barFont = {
+    fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
     fontSize: '12px',
-    WebkitFontSmoothing: 'none' as const,
-    MozOsxFontSmoothing: 'grayscale' as const,
-    textRendering: 'optimizeSpeed' as const,
+    fontWeight: 600,
+    letterSpacing: '-0.01em',
   }
+  const itemFont = { ...barFont, fontWeight: 500 }
 
   return (
     <>
@@ -501,12 +566,25 @@ function MacMenuBar({
           borderBottom: '1px solid #000000',
         }}
       >
-        {/* Left: Apple Menu + Menu Items */}
-        <div className="flex items-center">
+        {/* Clicking anywhere else closes an app menu. It sits under the menu titles, so pointing at another one still works */}
+        {appMenuOpen && (
+          <div
+            className="fixed inset-0"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setOpenMenu(null)}
+          />
+        )}
+
+        {/* Left: Apple Menu + Menu Items. Titles fill the bar's height, so they all sit alike and highlight edge to edge */}
+        <div className="flex h-full items-stretch">
           {/* Apple Logo Menu */}
           <button
-            onClick={onAppleMenuClick}
-            className={`flex items-center justify-center w-4 h-3.5 md:w-4.5 md:h-4 cursor-pointer ${appleMenuOpen ? 'bg-[#000080]/80 p-1' : ''}`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setOpenMenu(null)
+              onAppleMenuClick()
+            }}
+            className={`flex items-center justify-center self-center w-4 h-3.5 md:w-4.5 md:h-4 cursor-pointer ${appleMenuOpen ? 'bg-[#000080]/80 p-1' : ''}`}
           >
             <svg viewBox="0 0 18 20" className="w-[12px] h-[14px] md:w-[14px] md:h-[16px]">
               <defs>
@@ -533,35 +611,62 @@ function MacMenuBar({
             </svg>
           </button>
 
-          {/* Menu Items with pixelated bold font */}
-          {menuItems.map((item) => (
-            <span
-              key={item}
-              className="text-[11px] md:text-[12px] text-black cursor-default hidden md:inline px-[8px] md:px-[10px] py-[1px]"
-              style={pixelFontStyle}
-            >
-              {item}
-            </span>
-          ))}
+          {/* The app's menus; the Finder's are titles only */}
+          {appMenus
+            ? appMenus.map((menu, index) => {
+                const open = openMenu === index
+                return (
+                  <div key={menu.title} className="relative hidden md:flex">
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={open}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        if (appleMenuOpen) onAppleMenuClick()
+                        setOpenMenu(open ? null : index)
+                      }}
+                      // With a menu already down, pointing at another title opens that one instead
+                      onMouseEnter={() => {
+                        if (openMenu !== null && !open) setOpenMenu(index)
+                      }}
+                      className={`flex cursor-pointer items-center px-[10px] ${open ? 'bg-[#000080]/80 text-white' : 'text-black'}`}
+                      style={barFont}
+                    >
+                      {menu.title}
+                    </button>
+                    {open && <MenuDropdown items={menu.items} onClose={() => setOpenMenu(null)} style={itemFont} />}
+                  </div>
+                )
+              })
+            : menuItems.map((item) => (
+                <span
+                  key={item}
+                  className="hidden cursor-default items-center px-[10px] text-black md:flex"
+                  style={barFont}
+                >
+                  {item}
+                </span>
+              ))}
         </div>
 
         {/* Right: Clock and Finder */}
         <div className="flex items-center gap-[4px] md:gap-[8px]">
-          <span className="text-[11px] md:text-[12px] text-black" style={pixelFontStyle}>
+          <span className="text-[11px] md:text-[12px] text-black" style={barFont}>
             {currentTime}
           </span>
 
-          {/* Finder icon */}
+          {/* The app in front, as Mac OS 9's application menu shows it */}
           <div className="flex items-center gap-[2px] md:gap-[4px]">
             <Image
-              src={finderIcon}
-              alt="Finder"
+              src={app?.icon ?? finderIcon}
+              alt={app?.name ?? 'Finder'}
               width={14}
               height={14}
               className="w-[12px] h-[12px] md:w-[14px] md:h-[14px]"
             />
-            <span className="text-[11px] md:text-[12px] text-black hidden sm:inline" style={pixelFontStyle}>
-              Finder
+            <span className="text-[11px] md:text-[12px] text-black hidden sm:inline" style={barFont}>
+              {app?.name ?? 'Finder'}
             </span>
           </div>
         </div>
@@ -582,7 +687,7 @@ function MacMenuBar({
           >
             <div
               className="flex items-center gap-[6px] px-[12px] py-[3px] hover:bg-[#000080]/80 hover:text-white cursor-pointer text-black text-[11px] md:text-[12px]"
-              style={pixelFontStyle}
+              style={itemFont}
               onClick={() => {
                 onOpenWindow('about')
                 onAppleMenuClick()
@@ -602,7 +707,7 @@ function MacMenuBar({
 
             <div
               className="flex items-center gap-[6px] px-[12px] py-[3px] hover:bg-[#000080]/80 hover:text-white cursor-pointer text-black text-[11px] md:text-[12px]"
-              style={pixelFontStyle}
+              style={itemFont}
               onClick={() => {
                 onOpenWindow('calculator')
                 onAppleMenuClick()
@@ -627,7 +732,7 @@ function MacMenuBar({
 
             <div
               className="flex items-center gap-[6px] px-[12px] py-[3px] hover:bg-[#000080]/80 hover:text-white cursor-pointer text-black text-[11px] md:text-[12px]"
-              style={pixelFontStyle}
+              style={itemFont}
               onClick={() => {
                 onOpenWindow('readme')
                 onAppleMenuClick()
@@ -649,7 +754,7 @@ function MacMenuBar({
 
             <div
               className="flex items-center gap-[6px] px-[12px] py-[3px] hover:bg-[#000080]/80 hover:text-white cursor-pointer text-black text-[11px] md:text-[12px]"
-              style={pixelFontStyle}
+              style={itemFont}
               onClick={() => {
                 onShutdown()
                 onAppleMenuClick()
@@ -823,6 +928,21 @@ export function DesktopSection() {
   const [isMobile, setIsMobile] = useState(false)
   const [highestZIndex, setHighestZIndex] = useState(100)
   const [isShutdown, setIsShutdown] = useState(false)
+  // Menus and window titles published by the apps running in the windows
+  const [chromes, setChromes] = useState<Record<string, AppChrome>>({})
+  const desktop = useMemo(
+    () => ({
+      publish: (windowId: string, chrome: AppChrome | null) =>
+        setChromes((current) => {
+          if (chrome) return { ...current, [windowId]: chrome }
+          if (!(windowId in current)) return current
+          const next = { ...current }
+          delete next[windowId]
+          return next
+        }),
+    }),
+    [],
+  )
 
   const desktopRef = useRef<HTMLDivElement>(null)
 
@@ -1060,140 +1180,150 @@ export function DesktopSection() {
     { id: 'pong', icon: <MacIcon src={pongIcon} alt={t.pong} />, label: t.pong },
   ]
 
+  // The app in front owns the menu bar, as on a Mac
+  const frontWindow = windows.reduce<WindowState | null>(
+    (front, win) => (win.isOpen && (!front || win.zIndex > front.zIndex) ? win : front),
+    null,
+  )
+  const frontApp = frontWindow ? (chromes[frontWindow.id] ?? null) : null
+
   // Just the screen: on the home page, the 3D scene is the Macintosh around it
   return (
-    <div
-      ref={desktopRef}
-      className="relative w-full h-full overflow-hidden"
-      // Before boot the screen is simply off
-      style={{ background: '#000' }}
-    >
-      {/* Shutdown Screen */}
-      {isShutdown && <MacShutdownScreen onPowerOn={handlePowerOn} />}
+    <DesktopProvider value={desktop}>
+      <div
+        ref={desktopRef}
+        className="relative w-full h-full overflow-hidden"
+        // Before boot the screen is simply off
+        style={{ background: '#000' }}
+      >
+        {/* Shutdown Screen */}
+        {isShutdown && <MacShutdownScreen onPowerOn={handlePowerOn} />}
 
-      {/* Boot Stages */}
-      {!isShutdown && (bootStage === 'happy' || bootStage === 'loading') && (
-        <MacBootScreen stage={bootStage} />
-      )}
+        {/* Boot Stages */}
+        {!isShutdown && (bootStage === 'happy' || bootStage === 'loading') && (
+          <MacBootScreen stage={bootStage} />
+        )}
 
-      {/* Desktop */}
-      {!isShutdown && bootStage === 'desktop' && (
-        <div className="absolute inset-0 flex flex-col animate-in fade-in duration-300">
-          {/* Menu Bar */}
-          <MacMenuBar
-            currentTime={currentTime}
-            onAppleMenuClick={() => setAppleMenuOpen(!appleMenuOpen)}
-            appleMenuOpen={appleMenuOpen}
-            onOpenWindow={openWindow}
-            onShutdown={handleShutdown}
-          />
-
-          {/* Desktop Area */}
-          <div
-            className="flex-1 relative overflow-hidden"
-            onClick={() => {
-              setSelectedIcon(null)
-              setAppleMenuOpen(false)
-            }}
-          >
-            {/* Wallpaper: a CSS background, so there is no image to drag, save or open in a new tab */}
-            <div
-              className="absolute inset-0 select-none"
-              style={{
-                backgroundColor: '#1d2f45',
-                backgroundImage: wallpaperImage,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-              onContextMenu={(e) => e.preventDefault()}
+        {/* Desktop */}
+        {!isShutdown && bootStage === 'desktop' && (
+          <div className="absolute inset-0 flex flex-col animate-in fade-in duration-300">
+            {/* Menu Bar */}
+            <MacMenuBar
+              currentTime={currentTime}
+              onAppleMenuClick={() => setAppleMenuOpen(!appleMenuOpen)}
+              appleMenuOpen={appleMenuOpen}
+              onOpenWindow={openWindow}
+              onShutdown={handleShutdown}
+              app={frontApp}
             />
 
-            {/* Desktop Icons - top right */}
-            <div className="absolute top-[8px] right-[8px] md:top-[12px] md:right-[12px] flex flex-col gap-2 md:gap-4">
-              {desktopIcons.map((icon, i) => (
-                <div
-                  key={icon.id}
-                  className="animate-in fade-in slide-in-from-right-2 duration-300"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <MacDesktopIcon
-                    icon={icon.icon}
-                    label={icon.label}
-                    selected={selectedIcon === icon.id}
-                    onSelect={() => setSelectedIcon(icon.id)}
-                    onDoubleClick={() => openWindow(icon.id)}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Trash Icon - bottom right */}
-            <div className="absolute bottom-[8px] right-[8px] md:bottom-[12px] md:right-[12px] animate-in fade-in slide-in-from-right-2 duration-300 delay-200">
-              <MacDesktopIcon
-                icon={<MacIcon src={trashIcon} alt={t.trash} />}
-                label={t.trash}
-                selected={selectedIcon === 'trash'}
-                onSelect={() => setSelectedIcon('trash')}
-                onDoubleClick={() => openWindow('trash')}
+            {/* Desktop Area */}
+            <div
+              className="flex-1 relative overflow-hidden"
+              onClick={() => {
+                setSelectedIcon(null)
+                setAppleMenuOpen(false)
+              }}
+            >
+              {/* Wallpaper: a CSS background, so there is no image to drag, save or open in a new tab */}
+              <div
+                className="absolute inset-0 select-none"
+                style={{
+                  backgroundColor: '#1d2f45',
+                  backgroundImage: wallpaperImage,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+                onContextMenu={(e) => e.preventDefault()}
               />
-            </div>
 
-            {/* Hint */}
-            {windows.filter((w) => w.isOpen).length === 0 && (
-              <div className="absolute bottom-[8px] left-[8px] md:bottom-[12px] md:left-[12px] animate-in fade-in duration-1000 delay-500">
-                <p
-                  className="text-[10px] md:text-[11px] text-white/80"
-                  style={{
-                    fontFamily: 'Chicago, Charcoal, Geneva, sans-serif',
-                    textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
-                  }}
-                >
-                  {t.openHint}
-                </p>
+              {/* Desktop Icons - top right */}
+              <div className="absolute top-[8px] right-[8px] md:top-[12px] md:right-[12px] flex flex-col gap-2 md:gap-4">
+                {desktopIcons.map((icon, i) => (
+                  <div
+                    key={icon.id}
+                    className="animate-in fade-in slide-in-from-right-2 duration-300"
+                    style={{ animationDelay: `${i * 100}ms` }}
+                  >
+                    <MacDesktopIcon
+                      icon={icon.icon}
+                      label={icon.label}
+                      selected={selectedIcon === icon.id}
+                      onSelect={() => setSelectedIcon(icon.id)}
+                      onDoubleClick={() => openWindow(icon.id)}
+                    />
+                  </div>
+                ))}
               </div>
-            )}
 
-            {/* Windows */}
-            {(() => {
-              const openWindows = windows.filter((w) => w.isOpen)
-              const maxZIndex = Math.max(...openWindows.map((w) => w.zIndex), 0)
-              return windows
-                .filter((w) => w.isOpen && w.id !== 'calculator')
-                .map((win) => (
-                  <MacWindow
-                    key={win.id}
-                    window={win}
-                    onClose={() => closeWindow(win.id)}
-                    onMaximize={() => maximizeWindow(win.id)}
-                    onFocus={() => focusWindow(win.id)}
-                    onDrag={(x, y) => dragWindow(win.id, x, y)}
-                    onResize={(w, h) => resizeWindow(win.id, w, h)}
-                    isMobile={isMobile}
-                    containerRef={desktopRef}
-                    isActive={win.zIndex === maxZIndex}
-                  />
-                ))
-            })()}
-
-            {/* Calculator - custom window */}
-            {(() => {
-              const calcWindow = windows.find((w) => w.id === 'calculator')
-              if (!calcWindow) return null
-              return (
-                <CalculatorWindow
-                  isOpen={calcWindow.isOpen}
-                  position={calcWindow.position}
-                  zIndex={calcWindow.zIndex}
-                  onClose={() => closeWindow('calculator')}
-                  onFocus={() => focusWindow('calculator')}
-                  onDrag={(x, y) => dragWindow('calculator', x, y)}
-                  containerRef={desktopRef}
+              {/* Trash Icon - bottom right */}
+              <div className="absolute bottom-[8px] right-[8px] md:bottom-[12px] md:right-[12px] animate-in fade-in slide-in-from-right-2 duration-300 delay-200">
+                <MacDesktopIcon
+                  icon={<MacIcon src={trashIcon} alt={t.trash} />}
+                  label={t.trash}
+                  selected={selectedIcon === 'trash'}
+                  onSelect={() => setSelectedIcon('trash')}
+                  onDoubleClick={() => openWindow('trash')}
                 />
-              )
-            })()}
+              </div>
+
+              {/* Hint */}
+              {windows.filter((w) => w.isOpen).length === 0 && (
+                <div className="absolute bottom-[8px] left-[8px] md:bottom-[12px] md:left-[12px] animate-in fade-in duration-1000 delay-500">
+                  <p
+                    className="text-[10px] md:text-[11px] text-white/80"
+                    style={{
+                      fontFamily: 'Chicago, Charcoal, Geneva, sans-serif',
+                      textShadow: '1px 1px 1px rgba(0,0,0,0.5)',
+                    }}
+                  >
+                    {t.openHint}
+                  </p>
+                </div>
+              )}
+
+              {/* Windows */}
+              {(() => {
+                const openWindows = windows.filter((w) => w.isOpen)
+                const maxZIndex = Math.max(...openWindows.map((w) => w.zIndex), 0)
+                return windows
+                  .filter((w) => w.isOpen && w.id !== 'calculator')
+                  .map((win) => (
+                    <MacWindow
+                      key={win.id}
+                      window={chromes[win.id] ? { ...win, title: chromes[win.id].title } : win}
+                      onClose={() => closeWindow(win.id)}
+                      onMaximize={() => maximizeWindow(win.id)}
+                      onFocus={() => focusWindow(win.id)}
+                      onDrag={(x, y) => dragWindow(win.id, x, y)}
+                      onResize={(w, h) => resizeWindow(win.id, w, h)}
+                      isMobile={isMobile}
+                      containerRef={desktopRef}
+                      isActive={win.zIndex === maxZIndex}
+                    />
+                  ))
+              })()}
+
+              {/* Calculator - custom window */}
+              {(() => {
+                const calcWindow = windows.find((w) => w.id === 'calculator')
+                if (!calcWindow) return null
+                return (
+                  <CalculatorWindow
+                    isOpen={calcWindow.isOpen}
+                    position={calcWindow.position}
+                    zIndex={calcWindow.zIndex}
+                    onClose={() => closeWindow('calculator')}
+                    onFocus={() => focusWindow('calculator')}
+                    onDrag={(x, y) => dragWindow('calculator', x, y)}
+                    containerRef={desktopRef}
+                  />
+                )
+              })()}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </DesktopProvider>
   )
 }
