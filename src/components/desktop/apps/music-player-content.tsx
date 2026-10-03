@@ -1,6 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useLocale } from '@/components/locale-provider'
+
+const copy = {
+  en: { nowPlaying: 'NOW PLAYING', playlist: 'PLAYLIST', noDriver: '⚠ Audio driver not found. Running in silent mode.' },
+  pt: {
+    nowPlaying: 'TOCANDO AGORA',
+    playlist: 'PLAYLIST',
+    noDriver: '⚠ Driver de áudio não encontrado. Rodando em modo silencioso.',
+  },
+}
 
 interface Track {
   id: number
@@ -19,6 +29,7 @@ const playlist: Track[] = [
 ]
 
 export function MusicPlayerContent() {
+  const t = copy[useLocale()]
   const [currentTrack, setCurrentTrack] = useState<Track>(playlist[0])
   const [isPlaying, setIsPlaying] = useState(false)
   const [volume, setVolume] = useState(100)
@@ -92,12 +103,6 @@ export function MusicPlayerContent() {
     return '➡️'
   }
 
-  const getRepeatLabel = () => {
-    if (repeatMode === 'one') return 'Repeat 1'
-    if (repeatMode === 'all') return 'Repeat All'
-    return 'Play Once'
-  }
-
   const handleTrackSelect = (track: Track) => {
     setCurrentTrack(track)
     setCurrentTime(0)
@@ -166,7 +171,7 @@ export function MusicPlayerContent() {
           fontFamily: 'monospace',
         }}
       >
-        <div className="text-xs text-[#888888] mb-1">NOW PLAYING</div>
+        <div className="text-xs text-[#888888] mb-1">{t.nowPlaying}</div>
         <div className="text-sm truncate">{currentTrack.title}</div>
         <div className="text-xs text-[#00aa00] truncate">{currentTrack.artist}</div>
         <div className="text-xs mt-2 text-[#888888]">
@@ -226,7 +231,7 @@ export function MusicPlayerContent() {
         }}
       >
         <div className="text-xs font-bold mb-1 px-1" style={{ color: '#000000' }}>
-          PLAYLIST
+          {t.playlist}
         </div>
         <div
           style={{
@@ -252,7 +257,7 @@ export function MusicPlayerContent() {
 
       {/* Status bar */}
       <div className="px-3 py-1 text-xs border-t border-[#888888] shrink-0" style={{ background: '#c0c0c0' }}>
-        <span className="text-[#666666]">⚠ Audio driver not found. Running in silent mode.</span>
+        <span className="text-[#666666]">{t.noDriver}</span>
       </div>
     </div>
   )

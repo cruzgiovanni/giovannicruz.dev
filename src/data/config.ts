@@ -7,5 +7,8 @@ export const siteConfig = {
 
   // Contact
   email: 'giovannicruz.dev@gmail.com',
-  location: 'São Paulo, Brazil',
+  location: {
+    en: 'São Paulo, Brazil',
+    pt: 'São Paulo, Brasil',
+  },
 }

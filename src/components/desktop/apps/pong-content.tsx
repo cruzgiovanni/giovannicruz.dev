@@ -1,6 +1,30 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocale } from '@/components/locale-provider'
+
+const copy = {
+  en: {
+    you: 'You',
+    start: 'Start',
+    pause: 'Pause',
+    reset: 'Reset',
+    pressStart: 'Press Start or tap',
+    paused: 'Paused',
+    keyboardHelp: 'Arrow keys or W/S to move | Space to pause',
+    touchHelp: 'Touch & drag to move paddle',
+  },
+  pt: {
+    you: 'Você',
+    start: 'Iniciar',
+    pause: 'Pausar',
+    reset: 'Reiniciar',
+    pressStart: 'Clique em Iniciar ou toque',
+    paused: 'Pausado',
+    keyboardHelp: 'Setas ou W/S para mover | Espaço para pausar',
+    touchHelp: 'Toque e arraste para mover a raquete',
+  },
+}
 
 const GAME_WIDTH = 240
 const GAME_HEIGHT = 180
@@ -11,6 +35,7 @@ const PADDLE_SPEED = 4
 const INITIAL_BALL_SPEED = 4
 
 export function PongContent() {
+  const t = copy[useLocale()]
   const [playerY, setPlayerY] = useState(GAME_HEIGHT / 2 - PADDLE_HEIGHT / 2)
   const [cpuY, setCpuY] = useState(GAME_HEIGHT / 2 - PADDLE_HEIGHT / 2)
   const [ballX, setBallX] = useState(GAME_WIDTH / 2 - BALL_SIZE / 2)
@@ -206,7 +231,9 @@ export function PongContent() {
         }}
       >
         <div className="flex gap-4">
-          <span className="text-black font-bold">You: {playerScore}</span>
+          <span className="text-black font-bold">
+            {t.you}: {playerScore}
+          </span>
           <span className="text-[#666666]">CPU: {cpuScore}</span>
         </div>
 
@@ -220,7 +247,7 @@ export function PongContent() {
               boxShadow: 'inset -1px -1px 0 #888888, inset 1px 1px 0 #ffffff',
             }}
           >
-            {isPaused ? 'Start' : 'Pause'}
+            {isPaused ? t.start : t.pause}
           </button>
 
           <button
@@ -232,7 +259,7 @@ export function PongContent() {
               boxShadow: 'inset -1px -1px 0 #888888, inset 1px 1px 0 #ffffff',
             }}
           >
-            Reset
+            {t.reset}
           </button>
         </div>
       </div>
@@ -310,7 +337,7 @@ export function PongContent() {
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
               <div className="text-center text-white">
                 <p className="text-sm font-bold mb-1">Pong</p>
-                <p className="text-[10px] opacity-80">Press Start or tap</p>
+                <p className="text-[10px] opacity-80">{t.pressStart}</p>
               </div>
             </div>
           )}
@@ -318,7 +345,7 @@ export function PongContent() {
           {/* Pause overlay */}
           {isPaused && gameStarted && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <p className="text-white text-sm font-bold">Paused</p>
+              <p className="text-white text-sm font-bold">{t.paused}</p>
             </div>
           )}
         </div>
@@ -331,8 +358,8 @@ export function PongContent() {
           background: 'linear-gradient(180deg, #eeeeee 0%, #dddddd 100%)',
         }}
       >
-        <p className="hidden sm:block">Arrow keys or W/S to move | Space to pause</p>
-        <p className="sm:hidden">Touch & drag to move paddle</p>
+        <p className="hidden sm:block">{t.keyboardHelp}</p>
+        <p className="sm:hidden">{t.touchHelp}</p>
       </div>
     </div>
   )
