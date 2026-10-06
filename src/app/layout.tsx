@@ -7,37 +7,37 @@ import { GeistPixelSquare, GeistPixelGrid, GeistPixelCircle, GeistPixelTriangle,
 import { ThemeProvider } from '@/components/theme-provider'
 import { SiteAnalytics } from '@/components/site-analytics'
 import { LocaleProvider } from '@/components/locale-provider'
-import { localeTags, type Localized } from '@/lib/i18n'
+import { localeTags } from '@/lib/i18n'
 import { getLocale } from '@/lib/locale'
 
-const description: Localized<string> = {
-  en: 'Portfolio of Giovanni Cruz, software developer.',
-  pt: 'Portfólio de Giovanni Cruz, desenvolvedor de software.',
-}
+// One text for every language: terms read the same almost anywhere, so whoever gets the link knows what it is
+const description = 'Software Developer · Portfolio'
 
+// The preview image is app/opengraph-image.tsx
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
+  const ogLocale = (tag: string) => tag.replace('-', '_')
   return {
+    metadataBase: new URL('https://giovannicruz.dev'),
     title: 'Giovanni Cruz',
-    description: description[locale],
+    description,
     manifest: '/site.webmanifest',
     appleWebApp: {
       title: 'Giovanni Cruz',
     },
     openGraph: {
       type: 'website',
-      url: 'https://giovannicruz.dev',
+      url: '/',
+      siteName: 'Giovanni Cruz',
       title: 'Giovanni Cruz',
-      description: description[locale],
-      locale: localeTags[locale].replace('-', '_'),
-      images: [
-        {
-          url: 'https://giovannicruz.dev/art.jpeg',
-          width: 1280,
-          height: 1280,
-          alt: 'Giovanni Cruz',
-        },
-      ],
+      description,
+      locale: ogLocale(localeTags[locale]),
+      alternateLocale: ogLocale(localeTags[locale === 'pt' ? 'en' : 'pt']),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Giovanni Cruz',
+      description,
     },
   }
 }
