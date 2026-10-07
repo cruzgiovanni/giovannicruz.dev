@@ -19,4 +19,4 @@ Next.js, React, TypeScript, Three.js and Tailwind CSS.
 
 ---
 
-[GitHub](https://github.com/cruzgiovanni) · [LinkedIn](https://linkedin.com/in/eugiovannicruz)
+[GitHub](https://github.com/cruzgiovanni) · [LinkedIn](https://linkedin.com/in/eugiovannicruz) · [X](https://x.com/giovannicrz)
