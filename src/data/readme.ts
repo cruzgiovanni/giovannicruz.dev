@@ -124,7 +124,11 @@ export function getReadmeFiles(locale: Locale): ReadmeFile[] {
         `- **${contactSection.location.label}:** ${contactSection.location.value}`,
       ]),
       `## ${t.findMe}`,
-      list([`- [GitHub](${siteConfig.socials.github})`, `- [LinkedIn](${siteConfig.socials.linkedin})`]),
+      list([
+        `- [GitHub](${siteConfig.socials.github})`,
+        `- [LinkedIn](${siteConfig.socials.linkedin})`,
+        `- [X](${siteConfig.socials.x})`,
+      ]),
     ),
   })
 

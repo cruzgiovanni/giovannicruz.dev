@@ -3,6 +3,7 @@ export const siteConfig = {
   socials: {
     github: 'https://github.com/cruzgiovanni',
     linkedin: 'https://linkedin.com/in/eugiovannicruz',
+    x: 'https://x.com/giovannicrz',
   },
 
   // Contact
