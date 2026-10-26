@@ -20,9 +20,15 @@ export interface AppChrome {
   menus: AppMenu[]
 }
 
-interface Desktop {
+export interface Desktop {
   /** Publishes (or, with null, withdraws) the chrome of the app in a window. */
   publish: (windowId: string, chrome: AppChrome | null) => void
+  /** Opens the app's window, or brings it to the front when it's already open. */
+  open: (windowId: string) => void
+  close: (windowId: string) => void
+  shutDown: () => void
+  /** Shuts down and boots again. */
+  restart: () => void
 }
 
 const DesktopContext = createContext<Desktop | null>(null)

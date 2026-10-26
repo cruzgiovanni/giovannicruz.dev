@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { ReadmeContent } from '@/components/desktop/apps/readme-content'
 import { TerminalContent } from '@/components/desktop/apps/terminal-content'
 import { MusicPlayerContent } from '@/components/desktop/apps/music-player-content'
@@ -17,7 +17,7 @@ import terminalIcon from '../../../public/mac-icons/terminal.png'
 import musicPlayerIcon from '../../../public/mac-icons/music-player.png'
 import pongIcon from '../../../public/mac-icons/ping-pong.png'
 import { useLocale } from '@/components/locale-provider'
-import { DesktopProvider, type AppChrome, type MenuEntry } from '@/components/desktop/app-chrome'
+import { DesktopProvider, type AppChrome, type Desktop, type MenuEntry } from '@/components/desktop/app-chrome'
 
 const copy = {
   en: {
@@ -930,7 +930,9 @@ export function DesktopSection() {
   const [isShutdown, setIsShutdown] = useState(false)
   // Menus and window titles published by the apps running in the windows
   const [chromes, setChromes] = useState<Record<string, AppChrome>>({})
-  const desktop = useMemo(
+  // What apps can do to the desktop. The handlers change as windows do; the desktop handed to apps stays the same.
+  const actions = useRef<Omit<Desktop, 'publish'> | null>(null)
+  const desktop = useMemo<Desktop>(
     () => ({
       publish: (windowId: string, chrome: AppChrome | null) =>
         setChromes((current) => {
@@ -940,6 +942,10 @@ export function DesktopSection() {
           delete next[windowId]
           return next
         }),
+      open: (windowId) => actions.current?.open(windowId),
+      close: (windowId) => actions.current?.close(windowId),
+      shutDown: () => actions.current?.shutDown(),
+      restart: () => actions.current?.restart(),
     }),
     [],
   )
@@ -1172,6 +1178,18 @@ export function DesktopSection() {
     setIsShutdown(false)
     setBootStage('off')
   }, [])
+
+  useLayoutEffect(() => {
+    actions.current = {
+      open: openWindow,
+      close: closeWindow,
+      shutDown: handleShutdown,
+      restart: () => {
+        handleShutdown()
+        setTimeout(handlePowerOn, 1000)
+      },
+    }
+  })
 
   const desktopIcons = [
     { id: 'readme', icon: <MacIcon src={readmeIcon} alt={t.readme} />, label: t.readme },
