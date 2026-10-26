@@ -12,4 +12,6 @@ export const siteConfig = {
     en: 'São Paulo, Brazil',
     pt: 'São Paulo, Brasil',
   },
+  // Where the Terminal's weather command looks at the sky; keep it in step with the location
+  coordinates: { latitude: -23.55, longitude: -46.63 },
 }

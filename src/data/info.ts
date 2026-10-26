@@ -91,6 +91,7 @@ const skillCategories: SkillCategory[] = [
     technologies: [
       'Java',
       'Spring',
+      'Rust',
       'TypeScript',
       'Bun',
       'Node.js',
@@ -170,6 +171,13 @@ const contactLabels: Localized<{ email: string; location: string }> = {
   pt: { email: 'E-mail', location: 'Localização' },
 }
 
+// How each social link is shown; a new one in siteConfig.socials needs its name here
+const socialNames: Record<keyof typeof siteConfig.socials, string> = {
+  github: 'GitHub',
+  linkedin: 'LinkedIn',
+  x: 'X',
+}
+
 /** The portfolio content, in the given language. */
 export function getInfo(locale: Locale) {
   return {
@@ -193,6 +201,10 @@ export function getInfo(locale: Locale) {
     contactSection: {
       email: { label: contactLabels[locale].email, value: siteConfig.email },
       location: { label: contactLabels[locale].location, value: siteConfig.location[locale] },
+      socials: (Object.keys(socialNames) as (keyof typeof socialNames)[]).map((id) => ({
+        name: socialNames[id],
+        url: siteConfig.socials[id],
+      })),
     },
   }
 }

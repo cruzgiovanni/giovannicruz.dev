@@ -1,5 +1,4 @@
 import type { Locale } from '@/lib/i18n'
-import { siteConfig } from './config'
 import { getInfo, SHOW_PROJECTS } from './info'
 
 export interface ReadmeFile {
@@ -124,11 +123,7 @@ export function getReadmeFiles(locale: Locale): ReadmeFile[] {
         `- **${contactSection.location.label}:** ${contactSection.location.value}`,
       ]),
       `## ${t.findMe}`,
-      list([
-        `- [GitHub](${siteConfig.socials.github})`,
-        `- [LinkedIn](${siteConfig.socials.linkedin})`,
-        `- [X](${siteConfig.socials.x})`,
-      ]),
+      list(contactSection.socials.map((social) => `- [${social.name}](${social.url})`)),
     ),
   })
 
