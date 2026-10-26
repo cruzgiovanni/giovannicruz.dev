@@ -61,14 +61,14 @@ const FORTUNES: { quote: Text; author: Text }[] = [
       en: 'Unless the Lord builds the house, those who build it labor in vain.',
       pt: 'Se o Senhor não edificar a casa, em vão trabalham os que a edificam.',
     },
-    author: { en: 'Psalm 127:1', pt: 'Salmo 127:1' },
+    author: { en: 'Psalm 127,1', pt: 'Salmo 127,1' },
   },
   {
     quote: {
       en: 'Whatever you do, work heartily, as for the Lord and not for men.',
       pt: 'E tudo quanto fizerdes, fazei-o de todo o coração, como ao Senhor, e não aos homens.',
     },
-    author: { en: 'Colossians 3:23', pt: 'Colossenses 3:23' },
+    author: { en: 'Colossians 3,23', pt: 'Colossenses 3,23' },
   },
   {
     quote: { en: 'Ora et labora. (Pray and work.)', pt: 'Ora et labora. (Reza e trabalha.)' },
