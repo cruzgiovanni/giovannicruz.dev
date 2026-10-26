@@ -3,34 +3,14 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useDesktop } from '@/components/desktop/app-chrome'
 import { useLocale } from '@/components/locale-provider'
-import { siteConfig } from '@/data/config'
 import { getInfo, SHOW_PROJECTS } from '@/data/info'
 import { getReadmeFiles } from '@/data/readme'
-import { localeTags, localize, type Locale, type Localized, type Text } from '@/lib/i18n'
-import { COFFEE, JESUS, SMOKE, TRAIN, cowsay } from './terminal-art'
+import { localeTags, localize, type Text } from '@/lib/i18n'
+import { AVATAR, COFFEE, JESUS, SMOKE, TRAIN, cowsay } from './terminal-art'
 
 // Catppuccin Mocha: Base background, Text for input, Subtext 1 for output, Overlay 2 for muted lines,
 // Green and Blue for the prompt, Blue for links and command names, Mauve for headings, Red for errors,
-// Rosewater for the caret
-const RAINBOW = [
-  '#f38ba8',
-  '#fab387',
-  '#f9e2af',
-  '#a6e3a1',
-  '#94e2d5',
-  '#89dceb',
-  '#74c7ec',
-  '#89b4fa',
-  '#b4befe',
-  '#cba6f7',
-  '#f5c2e7',
-  '#f2cdcd',
-]
-// neofetch's color blocks, normal and bright
-const SWATCHES = [
-  ['#f38ba8', '#fab387', '#f9e2af', '#a6e3a1', '#94e2d5', '#89b4fa', '#cba6f7', '#f5c2e7'],
-  ['#eba0ac', '#f5e0dc', '#f2cdcd', '#89dceb', '#74c7ec', '#b4befe', '#bac2de', '#cdd6f4'],
-]
+// Lavender for the avatar, Rosewater for the caret
 
 // What `open` knows, by the name you type, and the window it opens
 const APPS: Record<string, string> = {
@@ -103,18 +83,6 @@ const FORTUNES: { quote: Text; author: Text }[] = [
   },
 ]
 
-// WMO weather codes, as Open-Meteo reports them
-const SKIES: { codes: number[]; label: Localized<string>; icon: string }[] = [
-  { codes: [0], label: { en: 'clear sky', pt: 'céu limpo' }, icon: '☀️' },
-  { codes: [1, 2], label: { en: 'partly cloudy', pt: 'parcialmente nublado' }, icon: '⛅' },
-  { codes: [3], label: { en: 'overcast', pt: 'nublado' }, icon: '☁️' },
-  { codes: [45, 48], label: { en: 'fog', pt: 'neblina' }, icon: '🌫️' },
-  { codes: [51, 53, 55, 56, 57], label: { en: 'drizzle', pt: 'garoa' }, icon: '🌦️' },
-  { codes: [61, 63, 65, 66, 67, 80, 81, 82], label: { en: 'rain', pt: 'chuva' }, icon: '🌧️' },
-  { codes: [71, 73, 75, 77, 85, 86], label: { en: 'snow (?!)', pt: 'neve (?!)' }, icon: '❄️' },
-  { codes: [95, 96, 99], label: { en: 'thunderstorm', pt: 'tempestade' }, icon: '⛈️' },
-]
-
 // Commands stay in English, like a real shell; what they print follows the visitor's language
 const copy = {
   en: {
@@ -136,8 +104,6 @@ const copy = {
       neofetch: 'System info, with style',
       fortune: 'A random quote',
       cowsay: 'A cow says it for you',
-      lolcat: 'Rainbow anything: fortune | lolcat',
-      weather: 'Live weather where I live',
       ping: 'Ping the server',
       hack: 'Hack the mainframe',
       coffee: 'Brew a coffee',
@@ -149,7 +115,7 @@ const copy = {
     },
     tips: [
       'Shortcuts: ↑/↓ history · Tab completes · Ctrl+L clears',
-      'Pipes work too: fortune | cowsay | lolcat',
+      'Pipes work too: fortune | cowsay',
       'Some commands are hidden. Explore.',
     ],
     welcome: "Type 'help' for available commands, or try 'neofetch'.",
@@ -180,7 +146,6 @@ const copy = {
     shutdown: 'Broadcast message from guest@cruz-os:\n\nThe system is going down for poweroff NOW!',
     reboot: 'Broadcast message from guest@cruz-os:\n\nThe system is going down for reboot NOW!',
     moo: 'Moo.',
-    lolcatUsage: 'usage: lolcat <text>, or pipe into it: fortune | lolcat',
     pong: "pong! 🏓 Up for a match? Type 'open pong'.",
     hack: {
       connecting: 'Connecting to the mainframe...',
@@ -189,11 +154,6 @@ const copy = {
       kidding: 'Just kidding. Nothing was hacked. Go drink some water. 💧',
     },
     coffee: 'HTTP 418: I’m a teapot. Here’s a coffee anyway.',
-    weather: {
-      loading: 'Looking at the sky...',
-      error: 'weather: couldn’t reach the sky. Try again in a bit.',
-      unknown: 'something the sky hasn’t named yet',
-    },
     neofetch: {
       os: 'OS',
       host: 'Host',
@@ -241,8 +201,6 @@ const copy = {
       neofetch: 'Informações do sistema, com estilo',
       fortune: 'Uma frase aleatória',
       cowsay: 'Uma vaca fala por você',
-      lolcat: 'Arco-íris em tudo: fortune | lolcat',
-      weather: 'O tempo agora onde eu moro',
       ping: 'Pinga o servidor',
       hack: 'Hackeia o mainframe',
       coffee: 'Passa um café',
@@ -254,7 +212,7 @@ const copy = {
     },
     tips: [
       'Atalhos: ↑/↓ histórico · Tab completa · Ctrl+L limpa',
-      'Pipes também funcionam: fortune | cowsay | lolcat',
+      'Pipes também funcionam: fortune | cowsay',
       'Alguns comandos estão escondidos. Explore.',
     ],
     welcome: "Digite 'help' para ver os comandos disponíveis, ou experimente 'neofetch'.",
@@ -286,7 +244,6 @@ const copy = {
     shutdown: 'Mensagem de guest@cruz-os para todos:\n\nO sistema será desligado AGORA!',
     reboot: 'Mensagem de guest@cruz-os para todos:\n\nO sistema será reiniciado AGORA!',
     moo: 'Muu.',
-    lolcatUsage: 'uso: lolcat <texto>, ou use num pipe: fortune | lolcat',
     pong: "pong! 🏓 Bora uma partida? Digite 'open pong'.",
     hack: {
       connecting: 'Conectando ao mainframe...',
@@ -295,11 +252,6 @@ const copy = {
       kidding: 'Brincadeira. Nada foi hackeado. Vai beber uma água. 💧',
     },
     coffee: 'HTTP 418: Eu sou um bule. Mas toma um café mesmo assim.',
-    weather: {
-      loading: 'Olhando pro céu...',
-      error: 'weather: não deu pra ver o céu. Tente de novo daqui a pouco.',
-      unknown: 'algo que o céu ainda não batizou',
-    },
     neofetch: {
       os: 'SO',
       host: 'Host',
@@ -329,8 +281,6 @@ const copy = {
     sl: "Piuí! 🚂 Você quis dizer 'ls'?",
   },
 }
-
-type Copy = (typeof copy)[Locale]
 
 /** What a command printed to stderr: shown in red, and it stops a pipe. */
 class Failure {
@@ -424,27 +374,6 @@ function Reveal({ lines, interval }: { lines: ReactNode[]; interval: number }) {
   )
 }
 
-/** Text in a diagonal rainbow, as lolcat paints it. */
-function Rainbow({ text }: { text: string }) {
-  return (
-    <pre className="whitespace-pre-wrap">
-      {text.split('\n').map((line, row) => {
-        const chars = Array.from(line)
-        return (
-          <Fragment key={row}>
-            {row > 0 && '\n'}
-            {Array.from({ length: Math.ceil(chars.length / 2) }, (_, i) => (
-              <span key={i} style={{ color: RAINBOW[(i + row) % RAINBOW.length] }}>
-                {chars.slice(i * 2, i * 2 + 2).join('')}
-              </span>
-            ))}
-          </Fragment>
-        )
-      })}
-    </pre>
-  )
-}
-
 const TRAIN_WIDTH = Math.max(...TRAIN.map((line) => line.length))
 
 /** The train from sl, crossing the terminal from right to left. */
@@ -497,40 +426,6 @@ function Train({ done }: { done: string }) {
   )
 }
 
-/** The current weather where I live, from Open-Meteo. */
-function Weather({ t }: { t: Copy['weather'] }) {
-  const locale = useLocale()
-  const [sky, setSky] = useState<{ temperature: number; code: number } | 'loading' | 'error'>('loading')
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const { latitude, longitude } = siteConfig.coordinates
-    fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`,
-      { signal: controller.signal },
-    )
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-      .then(({ current }) => {
-        if (typeof current?.temperature_2m !== 'number' || typeof current?.weather_code !== 'number') throw current
-        setSky({ temperature: Math.round(current.temperature_2m), code: current.weather_code })
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setSky('error')
-      })
-    return () => controller.abort()
-  }, [])
-
-  if (sky === 'loading') return <p className="text-[#9399b2]">{t.loading}</p>
-  if (sky === 'error') return <p className="text-[#f38ba8]">{t.error}</p>
-  const kind = SKIES.find((entry) => entry.codes.includes(sky.code))
-  return (
-    <p>
-      {siteConfig.location[locale]}: <span className="text-[#fab387]">{sky.temperature}°C</span>,{' '}
-      {kind ? `${kind.label[locale]} ${kind.icon}` : t.unknown}
-    </p>
-  )
-}
-
 export function TerminalContent() {
   const locale = useLocale()
   const t = copy[locale]
@@ -559,7 +454,7 @@ export function TerminalContent() {
     }
   }, [])
 
-  // Keep the newest line in view, also while output is still coming in (ping, hack, the weather)
+  // Keep the newest line in view, also while output is still coming in (ping, hack)
   useEffect(() => {
     const terminal = terminalRef.current
     const content = contentRef.current
@@ -650,12 +545,10 @@ export function TerminalContent() {
       [n.stack, stack.join(', ')],
     ]
     return (
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {/* "Cruz" is Portuguese for cross: Cruz OS's logo */}
-        <svg viewBox="0 0 6 9" className="w-[6em] shrink-0 self-start" fill="#f9e2af" aria-hidden="true">
-          <rect x="2" width="2" height="9" />
-          <rect y="2" width="6" height="2" />
-        </svg>
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+        <pre className="text-[#b4befe] text-[0.5em] leading-[1.45]" role="img" aria-label={hero.name}>
+          {AVATAR}
+        </pre>
         <div>
           <p>
             <span className="text-[#a6e3a1]">guest</span>@<span className="text-[#a6e3a1]">cruz-os</span>
@@ -666,11 +559,6 @@ export function TerminalContent() {
               <span className="text-[#89b4fa]">{label}</span>: {value}
             </p>
           ))}
-          <div className="mt-2 grid w-max grid-cols-8">
-            {SWATCHES.flat().map((color) => (
-              <span key={color} className="h-[1.25em] w-[3ch]" style={{ background: color }} />
-            ))}
-          </div>
         </div>
       </div>
     )
@@ -751,11 +639,6 @@ ${aboutSection.stats.map((stat) => `${stat.value} ${stat.label}`).join('\n')}`,
     neofetch,
     fortune,
     cowsay: (args, stdin) => cowsay(args.trim() || stdin?.trim() || t.moo),
-    lolcat: (args, stdin) => {
-      const text = args.trim() ? args : stdin
-      return text ? <Rainbow text={text} /> : new Failure(t.lolcatUsage)
-    },
-    weather: () => <Weather t={t.weather} />,
     ping: (args) => {
       const host = args.trim().split(/\s+/)[0] || 'giovannicruz.dev'
       const times = Array.from({ length: 4 }, () => (0.02 + Math.random() * 0.05).toFixed(3))

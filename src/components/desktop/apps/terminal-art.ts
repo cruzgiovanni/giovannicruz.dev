@@ -1,4 +1,23 @@
-// ASCII art for the Terminal. Every line is plain text, so it pipes into cowsay and lolcat like any output.
+// ASCII art for the Terminal. Every line is plain text, so it pipes into cowsay like any output.
+
+// My avatar (public/art.jpeg) in braille, the logo neofetch shows. It's drawn at 0.5em with a 1.45 line height,
+// where braille dots come out about square.
+export const AVATAR = `⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣶⣶⣶⣶⣶⣤⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣤⣤⣀⣀⡀⠀⠀
+⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠁
+⠀⠀⠀⢀⣀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀
+⠀⠀⣴⣿⣿⣿⡿⠁⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠀
+⠀⢸⣿⣿⣿⡟⠀⠀⠀⠀⠈⠛⠻⠿⣿⣿⣿⣿⡿⠿⢻⣿⣿⣿⣿⣿⣷⠀
+⠀⢸⣿⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⣿⡏⠀
+⠀⠈⣿⣿⡇⢀⡴⠖⠿⠿⢶⣶⡄⣠⣶⠾⠿⠿⠿⣗⢦⣈⣿⠿⠿⢿⣇⠀
+⢠⡟⠉⢹⡟⢻⡇⢀⣀⣤⣤⣴⡿⣿⣧⣤⣴⠶⢶⠌⢸⡏⠀⠀⠀⠀⢹⡆
+⢸⡇⠀⢸⡇⢸⡇⠉⠙⠋⠀⢸⢇⣿⡇⠈⠁⠀⠀⠀⣿⠀⠀⠀⠀⠀⣸⠇
+⠀⠻⣤⡈⣇⠈⠓⠒⠒⠒⠒⢋⡼⠁⠓⠒⠒⠒⠒⠚⠋⠀⠀⢀⣠⡾⠋⠀
+⠀⠀⠀⠀⢹⡄⠀⠀⠀⠀⠀⠸⡄⠀⢀⣀⣤⡀⠀⠀⠀⠀⢀⣿⠉⠀⠀⠀
+⠀⠀⠀⠀⠀⢳⡀⠀⠀⠀⢠⠖⠒⠛⡉⠠⠀⣹⠀⠀⠀⢀⣾⠃⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠻⣄⠀⠀⠘⠦⣭⣤⣥⠴⠚⠁⠀⠀⣠⡾⠃⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⡀⠀⠀⠀⠀⠀⠀⢀⣠⡾⠋⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠛⠶⠶⠶⠶⠞⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀`
 
 export const JESUS = `
 ⢦⣷⣾⣶⣷⣾⣶⣧⣮⣴⣥⣾⣤⣷⣬⣶⣵⣮⣶⣥⣾⣤⣧⣼⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣾⣶⣷⣼⣶⣵⣮⣶⣵⣮⣶⣷⣾⣶⣷⣼⣤⣧⣼⣴⣧⣼⣶⡡
